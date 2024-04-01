@@ -3,8 +3,11 @@ import csv
 from datetime import datetime
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from git import Repo
 
-playlist_dir = 'playlists'
+# Hardcode locations for now. TODO make these configurable.
+archive_dir = 'spotify-archive'
+playlists_dir = 'playlists'
 playlist_metadata_filename = 'playlists_metadata.csv'
 
 def get_spotify_client():
@@ -48,17 +51,31 @@ def artists_string(artists):
             return ', '.join(artist_names)
     return 'Unknown Artist'
 
+def export_playlists_metadata(sp, playlists):
+    """
+    Creates a CSV file with playlist metadata (name, owner, number of songs, and ID).
+    """
+    with open(f'{archive_dir}/{playlist_metadata_filename}', 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['name', 'owner', 'num_songs', 'id'])
+
+        for playlist in playlists:
+            name = playlist['name']
+            owner = playlist['owner']['display_name']
+            length = playlist['tracks']['total']
+            id = playlist['id']
+
+            writer.writerow([name, owner, length, id])
+
 def export_playlists(sp, playlists):
     """
-    Exports each playlist as a separate CSV file in the 'playlists' folder,
+    Exports each playlist as a separate CSV file in the playlists folder,
     with fields ['name', 'artist', 'id', 'added_at', 'added_by'].
     """
-    os.makedirs('playlists', exist_ok=True)
-
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
         print(f'Exporting playlist: {playlist_name}')
-        filename = f"playlists/{playlist_name}.csv"
+        filename = f'{archive_dir}/{playlists_dir}/{playlist_name}.csv'
 
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
@@ -80,27 +97,31 @@ def export_playlists(sp, playlists):
 
                 writer.writerow([name, artist, id, added_at, added_by])
 
-def export_playlists_metadata(sp, playlists):
+def commit_changes():
     """
-    Creates a CSV file with playlist metadata (name, owner, number of songs, and ID).
+    Commits any changes in `archive_dir` with the commit message "Update <timestamp>".
     """
-    with open(playlist_metadata_filename, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['name', 'owner', 'num_songs', 'id'])
-
-        for playlist in playlists:
-            name = playlist['name']
-            owner = playlist['owner']['display_name']
-            length = playlist['tracks']['total']
-            id = playlist['id']
-
-            writer.writerow([name, owner, length, id])
+    repo = Repo.init(archive_dir)
+    repo.index.add([playlists_dir, playlist_metadata_filename])
+    if repo.is_dirty(): # Don't commit if there are no changes
+        print('Committing changes')
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        has_commits = bool(repo.git.rev_list('--all'))
+        if has_commits:
+            commit_message = f"Update {timestamp}"
+        else:
+            commit_message = f"Initial sync {timestamp}"
+        repo.index.commit(commit_message)
+    else:
+        print('No changes to commit')
 
 def main():
     sp = get_spotify_client()
     playlists = fetch_playlists(sp)
+    os.makedirs(f'{archive_dir}/{playlists_dir}', exist_ok=True)
     export_playlists_metadata(sp, playlists)
     export_playlists(sp, playlists)
+    commit_changes()
 
 if __name__ == '__main__':
     main()
