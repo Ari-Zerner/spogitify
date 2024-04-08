@@ -4,11 +4,16 @@ from datetime import datetime
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from git import Repo
+import yaml
 
-# Hardcode locations for now. TODO make these configurable.
-archive_dir = 'spotify-archive'
-playlists_dir = 'playlists'
-playlist_metadata_filename = 'playlists_metadata.csv'
+# Read configuration from YAML file
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
+# Get configuration values with default fallbacks
+archive_dir = os.path.expanduser(config.get('archive_dir', 'spotify-archive'))
+playlists_dir = config.get('playlists_dir', 'playlists')
+playlist_metadata_filename = config.get('playlist_metadata_filename', 'playlists_metadata.csv')
 
 def get_spotify_client():
     """

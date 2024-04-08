@@ -1,0 +1,6 @@
+# The full or relative (to pwd) path of the archive directory
+archive_dir: spotify-archive
+# The path of the playlists directory, relative to the archive directory
+playlists_dir: playlists
+# The path of the playlist metadata file, relative to the archive directory
+playlist_metadata_filename: playlists_metadata.csv
