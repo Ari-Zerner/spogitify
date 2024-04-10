@@ -48,6 +48,7 @@ pip install spotipy gitpython pyyaml
 
 ## Usage
 
+### Run Once
 1. Open a terminal or command prompt and navigate to the directory where the Spogitify script is located.
 
 2. Run the script using the following command:
@@ -58,11 +59,31 @@ pip install spotipy gitpython pyyaml
 3. The script will start running and perform the following steps:
    - Authenticate with the Spotify API using your app credentials.
    - Fetch all your playlists (excluding those owned by Spotify).
-   - Export each playlist as a separate CSV file in the `archive_dir/playlists_dir` directory.
-   - Create a metadata file named `playlist_metadata_filename` in the `archive_dir` directory, containing information about each playlist.
-   - Commit the changes to a Git repository in the `archive_dir` directory.
+   - Export each playlist as a separate CSV file in a folder in the archive directory.
+   - Create a metadata file in the archive directory, containing information about each playlist.
+   - Commit the changes to a Git repository in the archive directory.
 
-4. Once the script finishes running, you will have a local Git repository in the `archive_dir` directory with your playlist backups and metadata.
+4. Once the script finishes running, you will have a local Git repository in the archive directory with your playlist backups and metadata.
+
+### Run Daily
+
+To automatically run Spogitify daily:
+
+1. In the project directory, make `setup_cron.sh` executable:
+```
+chmod +x setup_cron.sh
+```
+
+2. Run the setup script:
+```
+./setup_cron.sh
+```
+
+This will set up a daily cron job to run spogitify.py at midnight.
+
+To modify the cron schedule, edit the `cron_schedule` variable in `setup_cron.sh` before running the script.
+
+If you encounter issues, check the system or cron logs, or run `crontab -l` to verify the cron job is scheduled correctly.
 
 ## Configuration
 
