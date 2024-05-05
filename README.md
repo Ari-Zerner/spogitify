@@ -28,23 +28,7 @@ pip install spotipy gitpython pyyaml
    - Note down the Client ID and Client Secret for your app.
    - Set the Redirect URI to `http://localhost:8888/callback` in your app settings.
 
-3. Set the following environment variables with your Spotify app credentials:
-   - `SPOTIFY_CLIENT_ID`: Your Spotify app's Client ID
-   - `SPOTIFY_CLIENT_SECRET`: Your Spotify app's Client Secret
-
-   You can set the environment variables using the following commands:
-
-   - For Linux/macOS:
-     ```
-     export SPOTIFY_CLIENT_ID=your_client_id
-     export SPOTIFY_CLIENT_SECRET=your_client_secret
-     ```
-
-   - For Windows:
-     ```
-     set SPOTIFY_CLIENT_ID=your_client_id
-     set SPOTIFY_CLIENT_SECRET=your_client_secret
-     ```
+3. Copy `example-config.yaml` to `config.yaml` and modify `config.yaml` with your Spotify credentials, as well as any other desired configuration (see [Configuration](#configuration)).
 
 ## Usage
 
@@ -58,7 +42,7 @@ pip install spotipy gitpython pyyaml
 
 3. The script will start running and perform the following steps:
    - Authenticate with the Spotify API using your app credentials.
-   - Fetch all your playlists (excluding those owned by Spotify).
+   - Fetch all your playlists (except for configured exclusions).
    - Export each playlist as a separate CSV file in a folder in the archive directory.
    - Create a metadata file in the archive directory, containing information about each playlist.
    - Commit the changes to a Git repository in the archive directory.
@@ -89,13 +73,13 @@ If you encounter issues, check the system or cron logs, or run `crontab -l` to v
 
 Spogitify uses a YAML configuration file named `config.yaml` to store the following settings:
 
+- `spotify_client_id`: Your Spotify app's Client ID (required).
+- `spotify_client_secret`: Your Spotify app's Client Secret (required).
 - `archive_dir`: The directory where the playlist backups and metadata will be stored (default: `spotify-archive`).
 - `playlists_dir`: The subdirectory within `archive_dir` where the individual playlist CSV files will be stored (default: `playlists`).
 - `playlist_metadata_filename`: The name of the CSV file that will contain the playlist metadata (default: `playlists_metadata.csv`).
 - `exclude_spotify_playlists`: Whether to exclude Spotify-generated playlists from the archive (default: `yes`).
 - `exclude_playlists`: A list of specific playlists to exclude from the archive (default: `[]`).
-
-You can copy or rename `example-config.yaml` to `config.yaml` and modify these values to customize the script's behavior.
 
 ## Note
 

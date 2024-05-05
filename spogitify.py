@@ -22,14 +22,14 @@ exclude_playlists = config.get('exclude_playlists', [])
 
 def get_spotify_client():
     """
-    Creates a Spotify client object using environment variables for credentials.
+    Creates a Spotify client object using configuration values for credentials.
     """
-    client_id = os.environ.get('SPOTIFY_CLIENT_ID')
-    client_secret = os.environ.get('SPOTIFY_CLIENT_SECRET')
+    client_id = config.get('spotify_client_id')
+    client_secret = config.get('spotify_client_secret')
     redirect_uri = 'http://localhost:8888/callback'
 
     if not client_id or not client_secret:
-        print('Error: SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must be set in the environment.')
+        print('Error: spotify_client_id and spotify_client_secret must be set in config.yaml.')
         exit(1)
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))

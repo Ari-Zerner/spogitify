@@ -1,3 +1,6 @@
+# Spotify application credentials
+spotify_client_id: your_spotify_client_id
+spotify_client_secret: your_spotify_client_secret
 # The full or relative (to pwd) path of the archive directory
 archive_dir: spotify-archive
 # The path of the playlists directory, relative to the archive directory
