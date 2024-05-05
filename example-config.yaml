@@ -6,3 +6,7 @@ playlists_dir: playlists
 playlist_metadata_filename: playlists_metadata.csv
 # Exclude Spotify-generated playlists? (defaults to yes)
 exclude_spotify_playlists: yes
+# Exclude specific playlists by name
+exclude_playlists:
+  - Secret Playlist 1
+  - Secret Playlist 2

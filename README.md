@@ -93,6 +93,7 @@ Spogitify uses a YAML configuration file named `config.yaml` to store the follow
 - `playlists_dir`: The subdirectory within `archive_dir` where the individual playlist CSV files will be stored (default: `playlists`).
 - `playlist_metadata_filename`: The name of the CSV file that will contain the playlist metadata (default: `playlists_metadata.csv`).
 - `exclude_spotify_playlists`: Whether to exclude Spotify-generated playlists from the archive (default: `yes`).
+- `exclude_playlists`: A list of specific playlists to exclude from the archive (default: `[]`).
 
 You can copy or rename `example-config.yaml` to `config.yaml` and modify these values to customize the script's behavior.
 

@@ -18,6 +18,7 @@ archive_dir = os.path.expanduser(config.get('archive_dir', 'spotify-archive'))
 playlists_dir = config.get('playlists_dir', 'playlists')
 playlist_metadata_filename = config.get('playlist_metadata_filename', 'playlists_metadata.csv')
 exclude_spotify_playlists = config.get('exclude_spotify_playlists', True)
+exclude_playlists = config.get('exclude_playlists', [])
 
 def get_spotify_client():
     """
@@ -38,6 +39,8 @@ def include_playlist(playlist):
     Returns True if the playlist should be included in the export.
     """
     if exclude_spotify_playlists and playlist['owner']['id'] == 'spotify':
+        return False
+    if playlist['name'] in exclude_playlists:
         return False
     return True
 
