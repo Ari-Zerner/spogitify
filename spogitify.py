@@ -71,6 +71,18 @@ def artists_string(artists):
             return ', '.join(artist_names)
     return 'Unknown Artist'
 
+def setup_archive():
+    """
+    Creates the archive directory and removes any existing playlist files.
+    """
+    playlists_path = f'{archive_dir}/{playlists_dir}'
+    os.makedirs(playlists_path, exist_ok=True)
+    # Remove any existing playlist files
+    for filename in os.listdir(playlists_path):
+        file_path = os.path.join(playlists_path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
 def export_playlists_metadata(sp, playlists):
     """
     Creates a CSV file with playlist metadata (name, owner, number of songs, and ID).
@@ -122,7 +134,7 @@ def commit_changes():
     Commits any changes in `archive_dir` with the commit message "Update <timestamp>".
     """
     repo = Repo.init(archive_dir)
-    repo.index.add([playlists_dir, playlist_metadata_filename])
+    repo.git.add(A=True) # Add all changes including deletions to git index
     if repo.is_dirty(): # Don't commit if there are no changes
         print('Committing changes')
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -138,7 +150,7 @@ def commit_changes():
 def main():
     sp = get_spotify_client()
     playlists = fetch_playlists(sp)
-    os.makedirs(f'{archive_dir}/{playlists_dir}', exist_ok=True)
+    setup_archive()
     export_playlists_metadata(sp, playlists)
     export_playlists(sp, playlists)
     commit_changes()
