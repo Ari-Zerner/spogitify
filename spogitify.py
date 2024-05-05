@@ -7,8 +7,11 @@ from git import Repo
 import yaml
 
 # Read configuration from YAML file
-with open('config.yaml', 'r') as file:
-    config = yaml.safe_load(file)
+try:
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+except FileNotFoundError:
+    config = {}
 
 # Get configuration values with default fallbacks
 archive_dir = os.path.expanduser(config.get('archive_dir', 'spotify-archive'))
