@@ -4,3 +4,5 @@ archive_dir: spotify-archive
 playlists_dir: playlists
 # The path of the playlist metadata file, relative to the archive directory
 playlist_metadata_filename: playlists_metadata.csv
+# Exclude Spotify-generated playlists? (defaults to yes)
+exclude_spotify_playlists: yes

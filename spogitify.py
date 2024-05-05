@@ -14,6 +14,7 @@ with open('config.yaml', 'r') as file:
 archive_dir = os.path.expanduser(config.get('archive_dir', 'spotify-archive'))
 playlists_dir = config.get('playlists_dir', 'playlists')
 playlist_metadata_filename = config.get('playlist_metadata_filename', 'playlists_metadata.csv')
+exclude_spotify_playlists = config.get('exclude_spotify_playlists', True)
 
 def get_spotify_client():
     """
@@ -29,6 +30,14 @@ def get_spotify_client():
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
 
+def include_playlist(playlist):
+    """
+    Returns True if the playlist should be included in the export.
+    """
+    if exclude_spotify_playlists and playlist['owner']['id'] == 'spotify':
+        return False
+    return True
+
 def fetch_playlists(sp):
     """
     Fetches all playlists for the authenticated user.
@@ -38,7 +47,7 @@ def fetch_playlists(sp):
     while results:
         playlists.extend(results['items'])
         results = sp.next(results)
-    playlists = [playlist for playlist in playlists if playlist['owner']['id'] != 'spotify']
+    playlists = [playlist for playlist in playlists if include_playlist(playlist)]
     playlists.sort(key=lambda playlist: playlist['id'])
     return playlists
 
