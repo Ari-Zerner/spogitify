@@ -51,9 +51,13 @@ def fetch_playlists(sp):
     Fetches all playlists for the authenticated user.
     """
     playlists = []
+    seen_playlist_ids = set()
     results = sp.current_user_playlists()
     while results:
-        playlists.extend(results['items'])
+        for item in results['items']:
+            if item['id'] not in seen_playlist_ids:
+                playlists.append(item)
+                seen_playlist_ids.add(item['id'])
         results = sp.next(results)
     playlists = [playlist for playlist in playlists if include_playlist(playlist)]
     playlists.sort(key=lambda playlist: playlist['id'])
