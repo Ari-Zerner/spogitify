@@ -1,15 +1,23 @@
 # Spotify application credentials
 spotify_client_id: your_spotify_client_id
 spotify_client_secret: your_spotify_client_secret
+
 # The full or relative (to pwd) path of the archive directory
-archive_dir: spotify-archive
+# archive_dir: spotify-archive
+
 # The path of the playlists directory, relative to the archive directory
-playlists_dir: playlists
+# playlists_dir: playlists
+
 # The path of the playlist metadata file, relative to the archive directory
-playlist_metadata_filename: playlists_metadata.csv
+# playlist_metadata_filename: playlists_metadata.csv
+
+# The URL of the remote repository to push the archive to
+# remote_url: git@github.com:username/spotify-archive.git
+
 # Exclude Spotify-generated playlists? (defaults to yes)
-exclude_spotify_playlists: yes
+# exclude_spotify_playlists: yes
+
 # Exclude specific playlists by name
-exclude_playlists:
-  - Secret Playlist 1
-  - Secret Playlist 2
+# exclude_playlists:
+#   - Secret Playlist 1
+#   - Secret Playlist 2

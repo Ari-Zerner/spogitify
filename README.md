@@ -7,7 +7,6 @@ Spogitify is a Python script that allows you to backup your Spotify playlists to
 Before running Spogitify, make sure you have the following:
 
 - Python 3.x installed on your system
-- A Spotify Developer account and app credentials (Client ID and Client Secret)
 - The following Python libraries installed:
   - `spotipy`
   - `gitpython`
@@ -28,7 +27,11 @@ pip install spotipy gitpython pyyaml
    - Note down the Client ID and Client Secret for your app.
    - Set the Redirect URI to `http://localhost:8888/callback` in your app settings.
 
-3. Copy `example-config.yaml` to `config.yaml` and modify `config.yaml` with your Spotify credentials, as well as any other desired configuration (see [Configuration](#configuration)).
+3. Copy `example-config.yaml` to `config.yaml` and modify `config.yaml` with your Spotify credentials.
+
+4. (optional) If you want to back up your Spotify archive remotely, create an empty repository on GitHub or your preferred remote hosting service and set the remote URL in `config.yaml`.
+
+5. (optional) Modify `config.yaml` with any other desired configuration (see [Configuration](#configuration)).
 
 ## Usage
 
@@ -46,8 +49,9 @@ pip install spotipy gitpython pyyaml
    - Export each playlist as a separate CSV file in a folder in the archive directory.
    - Create a metadata file in the archive directory, containing information about each playlist.
    - Commit the changes to a Git repository in the archive directory.
+   - Push changes to the remote repository if configured.
 
-4. Once the script finishes running, you will have a local Git repository in the archive directory with your playlist backups and metadata.
+4. Once the script finishes running, you will have a Git repository in the archive directory with your playlist backups and metadata.
 
 ### Run Daily
 
@@ -78,6 +82,7 @@ Spogitify uses a YAML configuration file named `config.yaml` to store the follow
 - `archive_dir`: The directory where the playlist backups and metadata will be stored (default: `spotify-archive`).
 - `playlists_dir`: The subdirectory within `archive_dir` where the individual playlist CSV files will be stored (default: `playlists`).
 - `playlist_metadata_filename`: The name of the CSV file that will contain the playlist metadata (default: `playlists_metadata.csv`).
+- `remote_url`: The URL of the remote repository to push the archive to (default: `None`). The remote repository must already exist.
 - `exclude_spotify_playlists`: Whether to exclude Spotify-generated playlists from the archive (default: `yes`).
 - `exclude_playlists`: A list of specific playlists to exclude from the archive (default: `[]`).
 

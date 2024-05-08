@@ -3,7 +3,7 @@ import csv
 from datetime import datetime
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from git import Repo
+from git import Repo, exc
 import yaml
 
 # Read configuration from YAML file
@@ -19,6 +19,8 @@ playlists_dir = config.get('playlists_dir', 'playlists')
 playlist_metadata_filename = config.get('playlist_metadata_filename', 'playlists_metadata.csv')
 exclude_spotify_playlists = config.get('exclude_spotify_playlists', True)
 exclude_playlists = config.get('exclude_playlists', [])
+remote_url = config.get('remote_url', None)
+remote_name = 'origin'
 
 def get_spotify_client():
     """
@@ -73,15 +75,39 @@ def artists_string(artists):
 
 def setup_archive():
     """
-    Creates the archive directory and removes any existing playlist files.
+    Sets up the archive directory and initializes or updates the Git repository.
+
+    This function creates the necessary directory structure within the specified archive directory.
+    It then either clones a remote Git repository into this directory or initializes a new Git repository if no remote is specified.
+    If a repository already exists, it updates the remote configuration and pulls the latest changes.
+
+    Returns the local Git repository object for further operations.
     """
-    playlists_path = f'{archive_dir}/{playlists_dir}'
-    os.makedirs(playlists_path, exist_ok=True)
-    # Remove any existing playlist files
-    for filename in os.listdir(playlists_path):
-        file_path = os.path.join(playlists_path, filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+    os.makedirs(f'{archive_dir}/{playlists_dir}', exist_ok=True)
+
+    repo = None
+    if remote_url:
+        try:
+            repo = Repo.clone_from(remote_url, archive_dir)
+        except exc.GitCommandError:
+            repo = Repo.init(archive_dir)
+
+        if remote_name not in repo.remotes:
+            repo.create_remote(remote_name, remote_url)
+        else:
+            repo.remotes[remote_name].set_url(remote_url)
+
+        remote = repo.remotes[remote_name]
+        remote.fetch()
+        if remote.refs:
+            try:
+                remote.pull(remote.refs[0].remote_head)
+            except exc.GitCommandError:
+                pass
+    else:
+        repo = Repo.init(archive_dir)
+
+    return repo
 
 def export_playlists_metadata(sp, playlists):
     """
@@ -104,10 +130,18 @@ def export_playlists(sp, playlists):
     Exports each playlist as a separate CSV file in the playlists folder,
     with fields ['name', 'artist', 'id', 'added_at', 'added_by'].
     """
+    playlists_path = f'{archive_dir}/{playlists_dir}'
+    
+    # Remove any existing playlist files
+    for filename in os.listdir(playlists_path):
+        file_path = os.path.join(playlists_path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+            
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
         print(f'Exporting playlist: {playlist_name}')
-        filename = f'{archive_dir}/{playlists_dir}/{playlist_name}.csv'
+        filename = f'{playlists_path}/{playlist_name}.csv'
 
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
@@ -129,11 +163,11 @@ def export_playlists(sp, playlists):
 
                 writer.writerow([name, artist, id, added_at, added_by])
 
-def commit_changes():
+def commit_changes(repo):
     """
-    Commits any changes in `archive_dir` with the commit message "Update <timestamp>".
+    Commits any changes in `archive_dir`. If there are previous commits, the commit message is "Update <timestamp>".
+    If it's the first commit, the message is "Initial sync <timestamp>".
     """
-    repo = Repo.init(archive_dir)
     repo.git.add(A=True) # Add all changes including deletions to git index
     if repo.is_dirty(): # Don't commit if there are no changes
         print('Committing changes')
@@ -147,13 +181,26 @@ def commit_changes():
     else:
         print('No changes to commit')
 
+def push_to_remote(repo):
+    """
+    Pushes any changes in `archive_dir` to the remote repository if configured.
+    """
+    if remote_url:
+        print('Pushing to remote')
+        current_branch = repo.head.ref
+        if current_branch.tracking_branch():
+            repo.remotes[remote_name].push()
+        else:
+            repo.remotes[remote_name].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+
 def main():
     sp = get_spotify_client()
     playlists = fetch_playlists(sp)
-    setup_archive()
+    repo = setup_archive()
     export_playlists_metadata(sp, playlists)
     export_playlists(sp, playlists)
-    commit_changes()
+    commit_changes(repo)
+    push_to_remote(repo)
 
 if __name__ == '__main__':
     main()
