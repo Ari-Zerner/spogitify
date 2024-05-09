@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from git import Repo, exc
 import yaml
+import re
 
 # Read configuration from YAML file
 try:
@@ -167,6 +168,81 @@ def export_playlists(sp, playlists):
 
                 writer.writerow([name, artist, id, added_at, added_by])
 
+def describe_changes(repo):
+    """
+    Returns a human-readable description of the changes made since the last commit.
+    """
+    diff_index = repo.head.commit.diff(None)  # Compare last commit to working directory
+    added_playlists = set()
+    changed_playlists = set()
+    deleted_playlists = set()
+    
+    prefix_length = len(playlists_dir + '/')
+    suffix_length = len('.csv')
+    
+    def display_playlist(filename):
+        return filename[prefix_length:-suffix_length]
+    
+    def display_track(track):
+        return f"{track[0]} by {track[1]}"
+    
+    playlist_groups = [('Added', 'A', added_playlists),
+                       ('Changed', 'M', changed_playlists),
+                       ('Deleted', 'D', deleted_playlists)]
+    
+    for (group_name, change_type, collection) in playlist_groups:
+        for diff_item in diff_index.iter_change_type(change_type):
+            path = diff_item.a_path
+            if re.match(f'^{playlists_dir}/.*\.csv$', path):
+                collection.add(path)
+    
+    change_description = "Summary of Changes:\n"
+    for (group_name, change_type, collection) in playlist_groups:
+        if collection:
+            change_description += f"  {group_name} playlists:\n"
+            for playlist in collection:
+                change_description += f"    - {display_playlist(playlist)}\n"
+        
+    change_description += "\n"
+    
+    for playlist in added_playlists:
+        change_description += f"Added playlist: {display_playlist(playlist)}\n"
+        try:
+            with open(os.path.join(repo.working_dir, playlist), 'r') as file:
+                reader = csv.reader(file)
+                next(reader)  # Skip header
+                tracks = list(reader)
+            change_description += "  Tracks:\n"
+            for track in tracks:
+                change_description += f"    - {display_track(track)}\n"
+        except Exception as e:
+            change_description += f"Error describing added playlist {display_playlist(playlist)}: {str(e)}\n"
+    
+    for playlist in changed_playlists:
+        change_description += f"Changed playlist: {display_playlist(playlist)}\n"
+        try:
+            with open(os.path.join(repo.working_dir, playlist), 'r') as file:
+                reader = csv.reader(file)
+                next(reader)  # Skip header
+                current_tracks = set(tuple(row) for row in reader)
+            previous_tracks = set(tuple(row) for row in csv.reader(repo.git.show(f'HEAD~1:{playlist}').splitlines()))
+            
+            added_tracks = current_tracks - previous_tracks
+            removed_tracks = previous_tracks - current_tracks
+            
+            if added_tracks:
+                change_description += "  Added tracks:\n"
+                for track in added_tracks:
+                    change_description += f"    - {display_track(track)}\n"
+            if removed_tracks:
+                change_description += "  Removed tracks:\n"
+                for track in removed_tracks:
+                    change_description += f"    - {display_track(track)}\n"
+        except Exception as e:
+            change_description += f"Error describing changes for {display_playlist(playlist)}: {str(e)}\n"
+    
+    return change_description
+
 def commit_changes(repo):
     """
     Commits any changes in `archive_dir`. If there are previous commits, the commit message is "Update <timestamp>".
@@ -178,7 +254,7 @@ def commit_changes(repo):
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         has_commits = bool(repo.git.rev_list('--all'))
         if has_commits:
-            commit_message = f"Update {timestamp}"
+            commit_message = f"Update {timestamp}\n\n{describe_changes(repo)}"
         else:
             commit_message = f"Initial sync {timestamp}"
         repo.index.commit(commit_message)
