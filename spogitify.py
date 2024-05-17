@@ -222,10 +222,12 @@ def describe_changes(repo):
         change_description += f"Changed playlist: {display_playlist(playlist)}\n"
         try:
             with open(os.path.join(repo.working_dir, playlist), 'r') as file:
-                reader = csv.reader(file)
-                next(reader)  # Skip header
-                current_tracks = set(tuple(row) for row in reader)
-            previous_tracks = set(tuple(row) for row in csv.reader(repo.git.show(f'HEAD~1:{playlist}').splitlines()))
+                current_reader = csv.reader(file)
+                next(current_reader)  # Skip header
+                current_tracks = set(tuple(row) for row in current_reader)
+                previous_reader = csv.reader(repo.git.show(f'HEAD~1:{playlist}').splitlines())
+                next(previous_reader)  # Skip header
+                previous_tracks = set(tuple(row) for row in previous_reader)
             
             added_tracks = current_tracks - previous_tracks
             removed_tracks = previous_tracks - current_tracks
