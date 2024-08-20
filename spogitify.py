@@ -1,6 +1,6 @@
 import os
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from git import Repo, exc
@@ -116,11 +116,11 @@ def setup_archive():
 
 def export_playlists_metadata(sp, playlists):
     """
-    Creates a CSV file with playlist metadata (name, owner, number of songs, and ID).
+    Creates a CSV file with playlist metadata (name, owner, number of songs, ID, and total length).
     """
     with open(f'{archive_dir}/{playlist_metadata_filename}', 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['name', 'owner', 'num_songs', 'id'])
+        writer.writerow(['name', 'owner', 'num_songs', 'id', 'total_length_seconds'])
 
         for playlist in playlists:
             name = playlist['name']
@@ -128,12 +128,15 @@ def export_playlists_metadata(sp, playlists):
             length = playlist['tracks']['total']
             id = playlist['id']
 
-            writer.writerow([name, owner, length, id])
+            # Calculate total length
+            total_seconds = sum(track['track']['duration_ms'] // 1000 for track in sp.playlist_tracks(id)['items'] if track['track'])
+
+            writer.writerow([name, owner, length, id, total_seconds])
 
 def export_playlists(sp, playlists):
     """
     Exports each playlist as a separate CSV file in the playlists folder,
-    with fields ['name', 'artist', 'id', 'added_at', 'added_by'].
+    with fields ['name', 'artist', 'id', 'added_at', 'added_by', 'length_ms'].
     """
     playlists_path = f'{archive_dir}/{playlists_dir}'
     
@@ -150,7 +153,7 @@ def export_playlists(sp, playlists):
 
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['name', 'artist', 'id', 'added_at', 'added_by'])
+            writer.writerow(['name', 'artist', 'id', 'added_at', 'added_by', 'length_seconds'])
 
             items = []
             results = sp.playlist_tracks(playlist['id'])
@@ -160,13 +163,15 @@ def export_playlists(sp, playlists):
 
             for item in items:
                 track = item['track']
-                name = track['name']
-                artist = artists_string(track['artists'])
-                id = track['id']
-                added_at = item.get('added_at', '')
-                added_by = item.get('added_by', {}).get('id', '')
+                if track:  # Check if track is not None
+                    name = track['name']
+                    artist = artists_string(track['artists'])
+                    id = track['id']
+                    added_at = item.get('added_at', '')
+                    added_by = item.get('added_by', {}).get('id', '')
+                    length_seconds = track['duration_ms'] // 1000
 
-                writer.writerow([name, artist, id, added_at, added_by])
+                    writer.writerow([name, artist, id, added_at, added_by, length_seconds])
 
 def describe_changes(repo):
     """
