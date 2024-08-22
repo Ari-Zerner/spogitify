@@ -31,7 +31,8 @@ def get_config():
         'remote_url': config.get('remote_url', None),
         'remote_name': 'origin',
         'spotify_client_id': config.get('spotify_client_id'),
-        'spotify_client_secret': config.get('spotify_client_secret')
+        'spotify_client_secret': config.get('spotify_client_secret'),
+        'spotify_redirect_uri': config.get('spotify_redirect_uri')
     }
 
 def get_spotify_client(config):
@@ -40,10 +41,10 @@ def get_spotify_client(config):
     """
     client_id = config['spotify_client_id']
     client_secret = config['spotify_client_secret']
-    redirect_uri = 'http://localhost:8888/callback'
+    redirect_uri = config['spotify_redirect_uri']
 
-    if not client_id or not client_secret:
-        print('Error: spotify_client_id and spotify_client_secret must be set in config.yaml.')
+    if not client_id or not client_secret or not redirect_uri:
+        print('Error: spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
         exit(1)
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
