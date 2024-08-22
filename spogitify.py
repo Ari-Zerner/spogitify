@@ -7,28 +7,39 @@ from git import Repo, exc
 import yaml
 import re
 
-# Read configuration from YAML file
-try:
-    with open('config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-except FileNotFoundError:
-    config = {}
+def get_config():
+    """
+    Reads configuration from a YAML file and returns a dictionary with configuration values.
 
-# Get configuration values with default fallbacks
-archive_dir = os.path.expanduser(config.get('archive_dir', 'spotify-archive'))
-playlists_dir = config.get('playlists_dir', 'playlists')
-playlist_metadata_filename = config.get('playlist_metadata_filename', 'playlists_metadata.csv')
-exclude_spotify_playlists = config.get('exclude_spotify_playlists', True)
-exclude_playlists = config.get('exclude_playlists', [])
-remote_url = config.get('remote_url', None)
-remote_name = 'origin'
+    This function attempts to read from 'config.yaml'. If the file is not found,
+    it falls back to default values for all configuration options.
+    """
+    # Read configuration from YAML file
+    try:
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        config = {}
 
-def get_spotify_client():
+    # Get configuration values with default fallbacks
+    return {
+        'archive_dir': os.path.expanduser(config.get('archive_dir', 'spotify-archive')),
+        'playlists_dir': config.get('playlists_dir', 'playlists'),
+        'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.csv'),
+        'exclude_spotify_playlists': config.get('exclude_spotify_playlists', True),
+        'exclude_playlists': config.get('exclude_playlists', []),
+        'remote_url': config.get('remote_url', None),
+        'remote_name': 'origin',
+        'spotify_client_id': config.get('spotify_client_id'),
+        'spotify_client_secret': config.get('spotify_client_secret')
+    }
+
+def get_spotify_client(config):
     """
     Creates a Spotify client object using configuration values for credentials.
     """
-    client_id = config.get('spotify_client_id')
-    client_secret = config.get('spotify_client_secret')
+    client_id = config['spotify_client_id']
+    client_secret = config['spotify_client_secret']
     redirect_uri = 'http://localhost:8888/callback'
 
     if not client_id or not client_secret:
@@ -37,30 +48,61 @@ def get_spotify_client():
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
 
-def include_playlist(playlist):
+def include_playlist(playlist, config):
     """
     Returns True if the playlist should be included in the export.
     """
-    if exclude_spotify_playlists and playlist['owner']['id'] == 'spotify':
+    if config['exclude_spotify_playlists'] and playlist['owner']['id'] == 'spotify':
         return False
-    if playlist['name'] in exclude_playlists:
+    if playlist['name'] in config['exclude_playlists']:
         return False
     return True
 
-def fetch_playlists(sp):
+def fetch_playlists(sp, config):
     """
-    Fetches all playlists for the authenticated user.
+    Fetches all playlists for the authenticated user, including track details.
     """
     playlists = []
     seen_playlist_ids = set()
     results = sp.current_user_playlists()
     while results:
         for item in results['items']:
-            if item['id'] not in seen_playlist_ids:
-                playlists.append(item)
+            if item['id'] not in seen_playlist_ids and include_playlist(item, config):
+                
+                print(f"Fetching playlist: {item['name']}")
+                playlist = {
+                    'id': item['id'],
+                    'name': item['name'],
+                    'owner': item['owner']['display_name']
+                }
+                total_length_ms = 0
+                
+                # Fetch tracks for the playlist
+                tracks = []
+                track_results = sp.playlist_tracks(playlist['id'])
+                while track_results:
+                    for track_item in track_results['items']:
+                        track = track_item['track']
+                        if track:
+                            track_info = {
+                                'name': track['name'],
+                                'artist': artists_string(track['artists']),
+                                'id': track['id'],
+                                'added_at': track_item.get('added_at', ''),
+                                'added_by': track_item.get('added_by', {}).get('id', ''),
+                                'length_seconds': track['duration_ms'] // 1000
+                            }
+                            tracks.append(track_info)
+                            total_length_ms += track['duration_ms']
+                    track_results = sp.next(track_results)
+                
+                playlist['tracks'] = tracks
+                playlist['num_songs'] = len(tracks)
+                playlist['total_length_seconds'] = total_length_ms // 1000
+                playlists.append(playlist)
                 seen_playlist_ids.add(item['id'])
         results = sp.next(results)
-    playlists = [playlist for playlist in playlists if include_playlist(playlist)]
+    
     playlists.sort(key=lambda playlist: playlist['id'])
     return playlists
 
@@ -78,7 +120,7 @@ def artists_string(artists):
             return ', '.join(artist_names)
     return 'Unknown Artist'
 
-def setup_archive():
+def setup_archive(config):
     """
     Sets up the archive directory and initializes or updates the Git repository.
 
@@ -88,21 +130,21 @@ def setup_archive():
 
     Returns the local Git repository object for further operations.
     """
-    os.makedirs(f'{archive_dir}/{playlists_dir}', exist_ok=True)
+    os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
 
     repo = None
-    if remote_url:
+    if config['remote_url']:
         try:
-            repo = Repo.clone_from(remote_url, archive_dir)
+            repo = Repo.clone_from(config['remote_url'], config['archive_dir'])
         except exc.GitCommandError:
-            repo = Repo.init(archive_dir)
+            repo = Repo.init(config['archive_dir'])
 
-        if remote_name not in repo.remotes:
-            repo.create_remote(remote_name, remote_url)
+        if config['remote_name'] not in repo.remotes:
+            repo.create_remote(config['remote_name'], config['remote_url'])
         else:
-            repo.remotes[remote_name].set_url(remote_url)
+            repo.remotes[config['remote_name']].set_url(config['remote_url'])
 
-        remote = repo.remotes[remote_name]
+        remote = repo.remotes[config['remote_name']]
         remote.fetch()
         if remote.refs:
             try:
@@ -110,42 +152,33 @@ def setup_archive():
             except exc.GitCommandError:
                 pass
     else:
-        repo = Repo.init(archive_dir)
+        repo = Repo.init(config['archive_dir'])
 
     return repo
 
-def export_playlists_metadata(sp, playlists):
+def write_playlists_metadata_csv(playlists, config):
     """
-    Creates a CSV file with playlist metadata (name, owner, number of songs, ID, and total length).
+    Writes playlist metadata to CSV file.
     """
-    with open(f'{archive_dir}/{playlist_metadata_filename}', 'w', newline='', encoding='utf-8') as csvfile:
+    with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['name', 'owner', 'num_songs', 'id', 'total_length_seconds'])
-
+        fields = ['name', 'owner', 'num_songs', 'id', 'total_length_seconds']
+        writer.writerow(fields)
         for playlist in playlists:
-            name = playlist['name']
-            owner = playlist['owner']['display_name']
-            length = playlist['tracks']['total']
-            id = playlist['id']
+            writer.writerow([playlist[field] for field in fields])
 
-            # Calculate total length
-            total_seconds = sum(track['track']['duration_ms'] // 1000 for track in sp.playlist_tracks(id)['items'] if track['track'])
-
-            writer.writerow([name, owner, length, id, total_seconds])
-
-def export_playlists(sp, playlists):
+def write_playlist_tracks_csvs(playlists, config):
     """
-    Exports each playlist as a separate CSV file in the playlists folder,
-    with fields ['name', 'artist', 'id', 'added_at', 'added_by', 'length_ms'].
+    Exports each playlist as a separate CSV file in the playlists folder.
     """
-    playlists_path = f'{archive_dir}/{playlists_dir}'
+    playlists_path = f"{config['archive_dir']}/{config['playlists_dir']}"
     
     # Remove any existing playlist files
     for filename in os.listdir(playlists_path):
         file_path = os.path.join(playlists_path, filename)
         if os.path.isfile(file_path):
             os.remove(file_path)
-            
+    
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
         print(f'Exporting playlist: {playlist_name}')
@@ -154,26 +187,10 @@ def export_playlists(sp, playlists):
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(['name', 'artist', 'id', 'added_at', 'added_by', 'length_seconds'])
+            for track in playlist['tracks']:
+                writer.writerow([track['name'], track['artist'], track['id'], track['added_at'], track['added_by'], track['length_seconds']])
 
-            items = []
-            results = sp.playlist_tracks(playlist['id'])
-            while results:
-                items.extend(results['items'])
-                results = sp.next(results)
-
-            for item in items:
-                track = item['track']
-                if track:  # Check if track is not None
-                    name = track['name']
-                    artist = artists_string(track['artists'])
-                    id = track['id']
-                    added_at = item.get('added_at', '')
-                    added_by = item.get('added_by', {}).get('id', '')
-                    length_seconds = track['duration_ms'] // 1000
-
-                    writer.writerow([name, artist, id, added_at, added_by, length_seconds])
-
-def describe_changes(repo):
+def describe_changes(repo, config):
     """
     Returns a human-readable description of the changes made since the last commit.
     """
@@ -182,7 +199,7 @@ def describe_changes(repo):
     changed_playlists = set()
     deleted_playlists = set()
     
-    prefix_length = len(playlists_dir + '/')
+    prefix_length = len(config['playlists_dir'] + '/')
     suffix_length = len('.csv')
     
     def display_playlist(filename):
@@ -198,7 +215,7 @@ def describe_changes(repo):
     for (group_name, change_type, collection) in playlist_groups:
         for diff_item in diff_index.iter_change_type(change_type):
             path = diff_item.a_path
-            if re.match(f'^{playlists_dir}/.*\.csv$', path):
+            if re.match(f"^{config['playlists_dir']}/.*\.csv$", path):
                 collection.add(path)
     
     change_description = "Summary of Changes:\n"
@@ -250,7 +267,7 @@ def describe_changes(repo):
     
     return change_description
 
-def commit_changes(repo):
+def commit_changes(repo, config):
     """
     Commits any changes in `archive_dir`. If there are previous commits, the commit message is "Update <timestamp>".
     If it's the first commit, the message is "Initial sync <timestamp>".
@@ -261,33 +278,55 @@ def commit_changes(repo):
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         has_commits = bool(repo.git.rev_list('--all'))
         if has_commits:
-            commit_message = f"Update {timestamp}\n\n{describe_changes(repo)}"
+            commit_message = f"Update {timestamp}\n\n{describe_changes(repo, config)}"
         else:
             commit_message = f"Initial sync {timestamp}"
         repo.index.commit(commit_message)
     else:
         print('No changes to commit')
 
-def push_to_remote(repo):
+def push_to_remote(repo, config):
     """
     Pushes any changes in `archive_dir` to the remote repository if configured.
     """
-    if remote_url:
+    if config['remote_url']:
         print('Pushing to remote')
         current_branch = repo.head.ref
         if current_branch.tracking_branch():
-            repo.remotes[remote_name].push()
+            repo.remotes[config['remote_name']].push()
         else:
-            repo.remotes[remote_name].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+            repo.remotes[config['remote_name']].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+            
+def run_export(sp, config):
+    """
+    Executes the main export process for Spotify playlists.
+
+    This function performs the following steps:
+    1. Fetches all playlists from the user's Spotify account.
+    2. Sets up the archive directory and initializes/updates the Git repository.
+    3. Writes metadata for all playlists to a CSV file.
+    4. Writes individual CSV files for each playlist's tracks.
+    5. Commits all changes to the Git repository.
+    6. Pushes changes to the remote repository if configured.
+
+    Args:
+        sp (spotipy.Spotify): An authenticated Spotify client object.
+        config (dict): A dictionary containing configuration settings.
+
+    Note:
+        This function may take a while to complete, especially for users with many playlists.
+    """
+    playlists = fetch_playlists(sp, config)
+    repo = setup_archive(config)
+    write_playlists_metadata_csv(playlists, config)
+    write_playlist_tracks_csvs(playlists, config)
+    commit_changes(repo, config)
+    push_to_remote(repo, config)
 
 def main():
-    sp = get_spotify_client()
-    playlists = fetch_playlists(sp)
-    repo = setup_archive()
-    export_playlists_metadata(sp, playlists)
-    export_playlists(sp, playlists)
-    commit_changes(repo)
-    push_to_remote(repo)
+    config = get_config()
+    sp = get_spotify_client(config)
+    run_export(sp, config)
 
 if __name__ == '__main__':
     main()
