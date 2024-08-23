@@ -10,61 +10,30 @@ import yaml
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-def sp_oauth():
-    return SpotifyOAuth(
-        client_id=app.config['SPOTIFY_CLIENT_ID'],
-        client_secret=app.config['SPOTIFY_CLIENT_SECRET'],
-        redirect_uri=app.config['SPOTIFY_REDIRECT_URI'],
-        scope='user-library-read playlist-read-private',
-        cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
-        state=str(uuid.uuid4())
-    )
+# Routes
 
 @app.route('/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
 
-@app.route('/login')
-def login():
-    auth_url = sp_oauth().get_authorize_url()
-    return redirect(auth_url)
-
 @app.route('/authorize')
 def authorize():
-    token_info = sp_oauth().get_access_token(request.args['code'])
-    if token_info:
-        token_info['expires_at'] = token_info['expires_in'] + int(time.time())
-        session['token_info'] = token_info
-        sp = Spotify(auth=token_info['access_token'])
+    spotify_oauth().get_access_token(request.args['code'])
+    sp = spotify()
+    if sp:
         user_info = sp.me()
         session['user_id'] = user_info['id']
         setup_user()
-        return redirect('/')
+        return redirect(session.pop('previous_page', '/'))
     return {"error": "Failed to get access token"}, 400
-
-def get_token():
-    token_info = session.get('token_info', None)
-    if not token_info:
-        return None
-
-    now = int(time.time())
-    is_expired = token_info['expires_at'] - now < 60 # 1 minute buffer
-
-    if is_expired:
-        token_info = sp_oauth().refresh_access_token(token_info['refresh_token'])
-        session['token_info'] = token_info
-
-    return token_info['access_token']
 
 @app.route('/')
 def whoami():
-    access_token = get_token()
-    if not access_token:
-        return redirect('/login')
+    sp = spotify()
+    if not sp:
+        return login_redirect()
     
-    sp = Spotify(auth=access_token)
     user_info = sp.me()
-    
     return {
         'name': user_info['display_name'],
         'id': user_info['id']
@@ -74,14 +43,14 @@ def whoami():
 def view_user_config():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect('/login')
+        return login_redirect()
     return render_template('config.html', config=app.config['users'][user_id])
 
 @app.route('/config', methods=['POST'])
 def update_user_config():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect('/login')
+        return login_redirect()
     
     form_data = request.form.to_dict()
     form_data['EXCLUDE_SPOTIFY_PLAYLISTS'] = form_data.get('EXCLUDE_SPOTIFY_PLAYLISTS') == 'on'
@@ -96,6 +65,30 @@ def update_user_config():
     app.config['users'][user_id].update(form_data)
     
     return redirect('/config')
+
+# Helper functions
+
+def spotify_oauth():
+    return SpotifyOAuth(
+        client_id=app.config['SPOTIFY_CLIENT_ID'],
+        client_secret=app.config['SPOTIFY_CLIENT_SECRET'],
+        redirect_uri=app.config['SPOTIFY_REDIRECT_URI'],
+        scope='user-library-read playlist-read-private',
+        cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
+        state=str(uuid.uuid4())
+    )
+
+def spotify():
+    sp_oauth = spotify_oauth()
+    if not sp_oauth.validate_token(sp_oauth.get_cached_token()):
+        return None
+    auth_token = sp_oauth.get_cached_token()['access_token']
+    return Spotify(auth=auth_token)
+
+def login_redirect():
+    session['previous_page'] = request.url
+    auth_url = spotify_oauth().get_authorize_url()
+    return redirect(auth_url)
 
 def user_dir():
     return os.path.join(app.config['USERS_DIR'], session.get('user_id'))
