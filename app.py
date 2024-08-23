@@ -4,16 +4,17 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
 import time
 import uuid
+import os
+import yaml
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-app.config.update(get_config())
 
 def sp_oauth():
     return SpotifyOAuth(
-        client_id=app.config['spotify_client_id'],
-        client_secret=app.config['spotify_client_secret'],
-        redirect_uri=app.config['spotify_redirect_uri'],
+        client_id=app.config['SPOTIFY_CLIENT_ID'],
+        client_secret=app.config['SPOTIFY_CLIENT_SECRET'],
+        redirect_uri=app.config['SPOTIFY_REDIRECT_URI'],
         scope='user-library-read playlist-read-private',
         cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())
@@ -37,6 +38,7 @@ def authorize():
         sp = Spotify(auth=token_info['access_token'])
         user_info = sp.me()
         session['user_id'] = user_info['id']
+        setup_user()
         return redirect('/')
     return {"error": "Failed to get access token"}, 400
 
@@ -68,5 +70,52 @@ def whoami():
         'id': user_info['id']
     }, 200
 
+def setup_app():
+    # Load app config
+    app.config.from_file('config.yaml', load=yaml.safe_load)
+    
+    # Ensure required fields are present
+    fields = ['SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET', 'SPOTIFY_REDIRECT_URI', 'USERS_DIR']
+    for field in fields:
+        if field not in app.config:
+            raise ValueError(f"{field} must be set in config.yaml")
+    
+    if 'users' not in app.config:
+        app.config['users'] = {}
+        
+    os.makedirs(app.config['USERS_DIR'], exist_ok=True)
+
+def setup_user():
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+    
+    user_dir = os.path.join(app.config['USERS_DIR'], user_id)
+    
+    os.makedirs(user_dir, exist_ok=True)
+    
+    # Load user config
+    if user_id not in app.config['users']:
+        app.config['users'][user_id] = {}
+    
+    default_config = {
+        'PLAYLISTS_DIR': 'playlists',
+        'PLAYLIST_METADATA_FILENAME': 'playlists_metadata.csv',
+        'REMOTE_URL': None,
+        'EXCLUDE_SPOTIFY_PLAYLISTS': True,
+        'EXCLUDE_PLAYLISTS': []
+    }
+    app.config['users'][user_id].update(default_config)
+    
+    user_config_path = os.path.join(user_dir, 'config.yaml')
+    if os.path.exists(user_config_path):
+        with open(user_config_path, 'r') as file:
+            user_config = yaml.safe_load(file)
+            if user_config:
+                app.config['users'][user_id].update(user_config)
+    
+    app.config['users'][user_id]['ARCHIVE_DIR'] = os.path.join(user_dir, 'archive')
+
 if __name__ == '__main__':
+    setup_app()
     app.run(debug=True)

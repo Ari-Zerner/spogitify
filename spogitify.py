@@ -4,44 +4,15 @@ from datetime import datetime, timedelta
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from git import Repo, exc
-import yaml
 import re
-
-def get_config():
-    """
-    Reads configuration from a YAML file and returns a dictionary with configuration values.
-
-    This function attempts to read from 'config.yaml'. If the file is not found,
-    it falls back to default values for all configuration options.
-    """
-    # Read configuration from YAML file
-    try:
-        with open('config.yaml', 'r') as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        config = {}
-
-    # Get configuration values with default fallbacks
-    return {
-        'archive_dir': os.path.expanduser(config.get('archive_dir', 'spotify-archive')),
-        'playlists_dir': config.get('playlists_dir', 'playlists'),
-        'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.csv'),
-        'exclude_spotify_playlists': config.get('exclude_spotify_playlists', True),
-        'exclude_playlists': config.get('exclude_playlists', []),
-        'remote_url': config.get('remote_url', None),
-        'remote_name': 'origin',
-        'spotify_client_id': config.get('spotify_client_id'),
-        'spotify_client_secret': config.get('spotify_client_secret'),
-        'spotify_redirect_uri': config.get('spotify_redirect_uri')
-    }
 
 def get_spotify_client(config):
     """
     Creates a Spotify client object using configuration values for credentials.
     """
-    client_id = config['spotify_client_id']
-    client_secret = config['spotify_client_secret']
-    redirect_uri = config['spotify_redirect_uri']
+    client_id = config['SPOTIFY_CLIENT_ID']
+    client_secret = config['SPOTIFY_CLIENT_SECRET']
+    redirect_uri = config['SPOTIFY_REDIRECT_URI']
 
     if not client_id or not client_secret or not redirect_uri:
         print('Error: spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
@@ -53,9 +24,9 @@ def include_playlist(playlist, config):
     """
     Returns True if the playlist should be included in the export.
     """
-    if config['exclude_spotify_playlists'] and playlist['owner']['id'] == 'spotify':
+    if config['EXCLUDE_SPOTIFY_PLAYLISTS'] and playlist['owner']['id'] == 'spotify':
         return False
-    if playlist['name'] in config['exclude_playlists']:
+    if playlist['name'] in config['EXCLUDE_PLAYLISTS']:
         return False
     return True
 
@@ -131,21 +102,21 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
-    os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
+    os.makedirs(f"{config['ARCHIVE_DIR']}/{config['PLAYLISTS_DIR']}", exist_ok=True)
 
     repo = None
-    if config['remote_url']:
+    if config['REMOTE_URL']:
         try:
-            repo = Repo.clone_from(config['remote_url'], config['archive_dir'])
+            repo = Repo.clone_from(config['REMOTE_URL'], config['ARCHIVE_DIR'])
         except exc.GitCommandError:
-            repo = Repo.init(config['archive_dir'])
+            repo = Repo.init(config['ARCHIVE_DIR'])
 
-        if config['remote_name'] not in repo.remotes:
-            repo.create_remote(config['remote_name'], config['remote_url'])
+        if config['REMOTE_NAME'] not in repo.remotes:
+            repo.create_remote(config['REMOTE_NAME'], config['REMOTE_URL'])
         else:
-            repo.remotes[config['remote_name']].set_url(config['remote_url'])
+            repo.remotes[config['REMOTE_NAME']].set_url(config['REMOTE_URL'])
 
-        remote = repo.remotes[config['remote_name']]
+        remote = repo.remotes[config['REMOTE_NAME']]
         remote.fetch()
         if remote.refs:
             try:
@@ -153,7 +124,7 @@ def setup_archive(config):
             except exc.GitCommandError:
                 pass
     else:
-        repo = Repo.init(config['archive_dir'])
+        repo = Repo.init(config['ARCHIVE_DIR'])
 
     return repo
 
@@ -161,7 +132,7 @@ def write_playlists_metadata_csv(playlists, config):
     """
     Writes playlist metadata to CSV file.
     """
-    with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as csvfile:
+    with open(f"{config['ARCHIVE_DIR']}/{config['PLAYLIST_METADATA_FILENAME']}", 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         fields = ['name', 'owner', 'num_songs', 'id', 'total_length_seconds']
         writer.writerow(fields)
@@ -172,7 +143,7 @@ def write_playlist_tracks_csvs(playlists, config):
     """
     Exports each playlist as a separate CSV file in the playlists folder.
     """
-    playlists_path = f"{config['archive_dir']}/{config['playlists_dir']}"
+    playlists_path = f"{config['ARCHIVE_DIR']}/{config['PLAYLISTS_DIR']}"
     
     # Remove any existing playlist files
     for filename in os.listdir(playlists_path):
@@ -200,7 +171,7 @@ def describe_changes(repo, config):
     changed_playlists = set()
     deleted_playlists = set()
     
-    prefix_length = len(config['playlists_dir'] + '/')
+    prefix_length = len(config['PLAYLISTS_DIR'] + '/')
     suffix_length = len('.csv')
     
     def display_playlist(filename):
@@ -216,7 +187,7 @@ def describe_changes(repo, config):
     for (group_name, change_type, collection) in playlist_groups:
         for diff_item in diff_index.iter_change_type(change_type):
             path = diff_item.a_path
-            if re.match(f"^{config['playlists_dir']}/.*\.csv$", path):
+            if re.match(f"^{config['PLAYLISTS_DIR']}/.*\.csv$", path):
                 collection.add(path)
     
     change_description = "Summary of Changes:\n"
@@ -290,13 +261,13 @@ def push_to_remote(repo, config):
     """
     Pushes any changes in `archive_dir` to the remote repository if configured.
     """
-    if config['remote_url']:
+    if config['REMOTE_URL']:
         print('Pushing to remote')
         current_branch = repo.head.ref
         if current_branch.tracking_branch():
-            repo.remotes[config['remote_name']].push()
+            repo.remotes[config['REMOTE_NAME']].push()
         else:
-            repo.remotes[config['remote_name']].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+            repo.remotes[config['REMOTE_NAME']].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
             
 def run_export(sp, config):
     """
