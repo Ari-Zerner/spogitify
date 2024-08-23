@@ -1,7 +1,7 @@
 from flask import Flask, redirect, request, session, render_template, flash
 from spogitify import *
 from spotipy.oauth2 import SpotifyOAuth
-from spotipy import Spotify
+from spotipy import Spotify, cache_handler
 import time
 import uuid
 import os
@@ -74,7 +74,7 @@ def spotify_oauth():
         client_secret=app.config['SPOTIFY_CLIENT_SECRET'],
         redirect_uri=app.config['SPOTIFY_REDIRECT_URI'],
         scope='user-library-read playlist-read-private',
-        cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
+        cache_handler = cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())
     )
 

@@ -1,24 +1,8 @@
 import os
 import csv
-from datetime import datetime, timedelta
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
+from datetime import datetime
 from git import Repo, exc
 import re
-
-def get_spotify_client(config):
-    """
-    Creates a Spotify client object using configuration values for credentials.
-    """
-    client_id = config['SPOTIFY_CLIENT_ID']
-    client_secret = config['SPOTIFY_CLIENT_SECRET']
-    redirect_uri = config['SPOTIFY_REDIRECT_URI']
-
-    if not client_id or not client_secret or not redirect_uri:
-        print('Error: spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
-        exit(1)
-
-    return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
 
 def include_playlist(playlist, config):
     """
@@ -294,11 +278,3 @@ def run_export(sp, config):
     write_playlist_tracks_csvs(playlists, config)
     commit_changes(repo, config)
     push_to_remote(repo, config)
-
-def main():
-    config = get_config()
-    sp = get_spotify_client(config)
-    run_export(sp, config)
-
-if __name__ == '__main__':
-    main()
