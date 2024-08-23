@@ -1,3 +1,4 @@
 .cache
 spotify-archive/
 config.yaml
+__pycache__
