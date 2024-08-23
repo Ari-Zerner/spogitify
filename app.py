@@ -1,4 +1,4 @@
-from flask import Flask, redirect, request, session
+from flask import Flask, redirect, request, session, render_template, flash
 from spogitify import *
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
@@ -70,6 +70,39 @@ def whoami():
         'id': user_info['id']
     }, 200
 
+@app.route('/config', methods=['GET'])
+def view_user_config():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+    return render_template('config.html', config=app.config['users'][user_id])
+
+@app.route('/config', methods=['POST'])
+def update_user_config():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+    
+    form_data = request.form.to_dict()
+    form_data['EXCLUDE_SPOTIFY_PLAYLISTS'] = form_data.get('EXCLUDE_SPOTIFY_PLAYLISTS') == 'on'
+    form_data['EXCLUDE_PLAYLISTS'] = [playlist.strip() for playlist in re.split(r'\r\n|\n|\r', form_data['EXCLUDE_PLAYLISTS']) if playlist.strip()]
+    if not form_data['PLAYLISTS_DIR'] or re.match(r'^\.*\/', form_data['PLAYLISTS_DIR']):
+        form_data['PLAYLISTS_DIR'] = 'playlists'
+    if not form_data['PLAYLIST_METADATA_FILENAME'] or re.match(r'^\.*\/', form_data['PLAYLIST_METADATA_FILENAME']):
+        form_data['PLAYLIST_METADATA_FILENAME'] = 'playlists_metadata.csv'
+    
+    with open(user_config_path(), 'w') as file:
+        yaml.dump(form_data, file)
+    app.config['users'][user_id].update(form_data)
+    
+    return redirect('/config')
+
+def user_dir():
+    return os.path.join(app.config['USERS_DIR'], session.get('user_id'))
+
+def user_config_path():
+    return os.path.join(user_dir(), 'config.yaml')
+
 def setup_app():
     # Load app config
     app.config.from_file('config.yaml', load=yaml.safe_load)
@@ -90,9 +123,7 @@ def setup_user():
     if not user_id:
         return
     
-    user_dir = os.path.join(app.config['USERS_DIR'], user_id)
-    
-    os.makedirs(user_dir, exist_ok=True)
+    os.makedirs(user_dir(), exist_ok=True)
     
     # Load user config
     if user_id not in app.config['users']:
@@ -107,14 +138,13 @@ def setup_user():
     }
     app.config['users'][user_id].update(default_config)
     
-    user_config_path = os.path.join(user_dir, 'config.yaml')
-    if os.path.exists(user_config_path):
-        with open(user_config_path, 'r') as file:
+    if os.path.exists(user_config_path()):
+        with open(user_config_path(), 'r') as file:
             user_config = yaml.safe_load(file)
             if user_config:
                 app.config['users'][user_id].update(user_config)
     
-    app.config['users'][user_id]['ARCHIVE_DIR'] = os.path.join(user_dir, 'archive')
+    app.config['users'][user_id]['ARCHIVE_DIR'] = os.path.join(user_dir(), 'archive')
 
 if __name__ == '__main__':
     setup_app()

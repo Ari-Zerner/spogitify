@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            max-width: 600px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input[type="text"],
+        input[type="checkbox"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        textarea {
+            height: 100px;
+        }
+
+        input[type="submit"] {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: auto;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Edit User Configuration</h1>
+    <form method="POST" action="{{ url_for('update_user_config') }}">
+
+        <label class="checkbox-label">
+            Exclude Spotify Playlists
+            <input type="checkbox" id="EXCLUDE_SPOTIFY_PLAYLISTS" name="EXCLUDE_SPOTIFY_PLAYLISTS" {% if
+                config.EXCLUDE_SPOTIFY_PLAYLISTS %}checked{% endif %}>
+        </label>
+
+        <label for="EXCLUDE_PLAYLISTS">Exclude Playlists (one per line):</label>
+        <textarea id="EXCLUDE_PLAYLISTS" name="EXCLUDE_PLAYLISTS">{{ '\n'.join(config.EXCLUDE_PLAYLISTS) }}</textarea>
+
+        <details>
+            <summary>Advanced Settings</summary>
+            <label for="PLAYLISTS_DIR">Playlists Directory:</label>
+            <input type="text" id="PLAYLISTS_DIR" name="PLAYLISTS_DIR" value="{{ config.PLAYLISTS_DIR }}"
+                placeholder="playlists">
+
+            <label for="PLAYLIST_METADATA_FILENAME">Playlist Metadata Filename:</label>
+            <input type="text" id="PLAYLIST_METADATA_FILENAME" name="PLAYLIST_METADATA_FILENAME"
+                value="{{ config.PLAYLIST_METADATA_FILENAME }}" placeholder="playlists_metadata.csv">
+
+            <label for="REMOTE_URL">Remote URL:</label>
+            <input type="text" id="REMOTE_URL" name="REMOTE_URL" value="{{ config.REMOTE_URL or '' }}"
+                placeholder="Remote URL (optional)">
+        </details>
+
+        <br>
+        <input type="submit" value="Update Configuration">
+    </form>
+</body>
+
+</html>
