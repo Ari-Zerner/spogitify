@@ -55,10 +55,6 @@ def update_user_config():
     form_data = request.form.to_dict()
     form_data['EXCLUDE_SPOTIFY_PLAYLISTS'] = form_data.get('EXCLUDE_SPOTIFY_PLAYLISTS') == 'on'
     form_data['EXCLUDE_PLAYLISTS'] = [playlist.strip() for playlist in re.split(r'\r\n|\n|\r', form_data['EXCLUDE_PLAYLISTS']) if playlist.strip()]
-    if not form_data['PLAYLISTS_DIR'] or re.match(r'^\.*\/', form_data['PLAYLISTS_DIR']):
-        form_data['PLAYLISTS_DIR'] = 'playlists'
-    if not form_data['PLAYLIST_METADATA_FILENAME'] or re.match(r'^\.*\/', form_data['PLAYLIST_METADATA_FILENAME']):
-        form_data['PLAYLIST_METADATA_FILENAME'] = 'playlists_metadata.csv'
     
     with open(user_config_path(), 'w') as file:
         yaml.dump(form_data, file)
@@ -123,8 +119,6 @@ def setup_user():
         app.config['users'][user_id] = {}
     
     default_config = {
-        'PLAYLISTS_DIR': 'playlists',
-        'PLAYLIST_METADATA_FILENAME': 'playlists_metadata.csv',
         'REMOTE_URL': None,
         'EXCLUDE_SPOTIFY_PLAYLISTS': True,
         'EXCLUDE_PLAYLISTS': []
@@ -137,7 +131,12 @@ def setup_user():
             if user_config:
                 app.config['users'][user_id].update(user_config)
     
-    app.config['users'][user_id]['ARCHIVE_DIR'] = os.path.join(user_dir(), 'archive')
+    mandatory_config = {
+        'PLAYLISTS_DIR': 'playlists',
+        'PLAYLIST_METADATA_FILENAME': 'playlists_metadata.csv',
+        'ARCHIVE_DIR': os.path.join(user_dir(), 'spotify-archive')
+    }
+    app.config['users'][user_id].update(mandatory_config)
 
 if __name__ == '__main__':
     setup_app()
