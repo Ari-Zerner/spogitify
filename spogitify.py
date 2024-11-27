@@ -1,5 +1,5 @@
 import os
-import csv
+import json
 from datetime import datetime, timedelta
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -25,7 +25,7 @@ def get_config():
     return {
         'archive_dir': os.path.expanduser(config.get('archive_dir', 'spotify-archive')),
         'playlists_dir': config.get('playlists_dir', 'playlists'),
-        'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.csv'),
+        'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.json'),
         'exclude_spotify_playlists': config.get('exclude_spotify_playlists', True),
         'exclude_playlists': config.get('exclude_playlists', []),
         'remote_url': config.get('remote_url', None),
@@ -68,7 +68,7 @@ def fetch_playlists(sp, config):
     results = sp.current_user_playlists()
     while results:
         for item in results['items']:
-            if item['id'] not in seen_playlist_ids and include_playlist(item, config):
+            if item and item['id'] not in seen_playlist_ids and include_playlist(item, config):
                 
                 print(f"Fetching playlist: {item['name']}")
                 playlist = {
@@ -157,20 +157,17 @@ def setup_archive(config):
 
     return repo
 
-def write_playlists_metadata_csv(playlists, config):
+def write_playlists_metadata_json(playlists, config):
     """
-    Writes playlist metadata to CSV file.
+    Writes playlist metadata to JSON file.
     """
-    with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        fields = ['name', 'owner', 'num_songs', 'id', 'total_length_seconds']
-        writer.writerow(fields)
-        for playlist in playlists:
-            writer.writerow([playlist[field] for field in fields])
+    with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as jsonfile:
+        playlists_without_tracks = [{k: v for k, v in p.items() if k != 'tracks'} for p in playlists]
+        json.dump(playlists_without_tracks, jsonfile, indent=2)
 
-def write_playlist_tracks_csvs(playlists, config):
+def write_playlist_tracks_json(playlists, config):
     """
-    Exports each playlist as a separate CSV file in the playlists folder.
+    Exports each playlist as a separate JSON file in the playlists folder.
     """
     playlists_path = f"{config['archive_dir']}/{config['playlists_dir']}"
     
@@ -183,13 +180,10 @@ def write_playlist_tracks_csvs(playlists, config):
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
         print(f'Exporting playlist: {playlist_name}')
-        filename = f'{playlists_path}/{playlist_name}.csv'
+        filename = f'{playlists_path}/{playlist_name}.json'
 
-        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['name', 'artist', 'id', 'added_at', 'added_by', 'length_seconds'])
-            for track in playlist['tracks']:
-                writer.writerow([track['name'], track['artist'], track['id'], track['added_at'], track['added_by'], track['length_seconds']])
+        with open(filename, 'w', newline='', encoding='utf-8') as jsonfile:
+            json.dump(playlist['tracks'], jsonfile, indent=2)
 
 def describe_changes(repo, config):
     """
@@ -201,10 +195,10 @@ def describe_changes(repo, config):
     deleted_playlists = set()
     
     prefix_length = len(config['playlists_dir'] + '/')
-    suffix_length = len('.csv')
     
     def display_playlist(filename):
-        return filename[prefix_length:-suffix_length]
+        # Remove prefix and any file extension
+        return filename.rsplit('.', 1)[0][prefix_length:]
     
     def display_track(track):
         return f"{track[0]} by {track[1]}"
@@ -216,7 +210,7 @@ def describe_changes(repo, config):
     for (group_name, change_type, collection) in playlist_groups:
         for diff_item in diff_index.iter_change_type(change_type):
             path = diff_item.a_path
-            if re.match(f"^{config['playlists_dir']}/.*\.csv$", path):
+            if re.match(f"^{config['playlists_dir']}/.*\.json$", path):
                 collection.add(path)
     
     change_description = "Summary of Changes:\n"
@@ -232,9 +226,7 @@ def describe_changes(repo, config):
         change_description += f"Added playlist: {display_playlist(playlist)}\n"
         try:
             with open(os.path.join(repo.working_dir, playlist), 'r') as file:
-                reader = csv.reader(file)
-                next(reader)  # Skip header
-                tracks = list(reader)
+                tracks = json.load(file)
             change_description += "  Tracks:\n"
             for track in tracks:
                 change_description += f"    - {display_track(track)}\n"
@@ -245,12 +237,8 @@ def describe_changes(repo, config):
         change_description += f"Changed playlist: {display_playlist(playlist)}\n"
         try:
             with open(os.path.join(repo.working_dir, playlist), 'r') as file:
-                current_reader = csv.reader(file)
-                next(current_reader)  # Skip header
-                current_tracks = set(tuple(row) for row in current_reader)
-                previous_reader = csv.reader(repo.git.show(f'HEAD~1:{playlist}').splitlines())
-                next(previous_reader)  # Skip header
-                previous_tracks = set(tuple(row) for row in previous_reader)
+                current_tracks = set((track['name'], track['artist']) for track in json.load(file))
+                previous_tracks = set((track['name'], track['artist']) for track in json.loads(repo.git.show(f'HEAD~1:{playlist}')))
             
             added_tracks = current_tracks - previous_tracks
             removed_tracks = previous_tracks - current_tracks
@@ -305,8 +293,8 @@ def run_export(sp, config):
     This function performs the following steps:
     1. Fetches all playlists from the user's Spotify account.
     2. Sets up the archive directory and initializes/updates the Git repository.
-    3. Writes metadata for all playlists to a CSV file.
-    4. Writes individual CSV files for each playlist's tracks.
+    3. Writes metadata for all playlists to a JSON file.
+    4. Writes individual JSON files for each playlist's tracks.
     5. Commits all changes to the Git repository.
     6. Pushes changes to the remote repository if configured.
 
@@ -319,8 +307,9 @@ def run_export(sp, config):
     """
     playlists = fetch_playlists(sp, config)
     repo = setup_archive(config)
-    write_playlists_metadata_csv(playlists, config)
-    write_playlist_tracks_csvs(playlists, config)
+    # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
+    write_playlists_metadata_json(playlists, config)
+    write_playlist_tracks_json(playlists, config)
     commit_changes(repo, config)
     push_to_remote(repo, config)
 

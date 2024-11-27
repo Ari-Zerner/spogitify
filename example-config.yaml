@@ -10,7 +10,7 @@ spotify_redirect_uri: localhost:5000/authorize
 # playlists_dir: playlists
 
 # The path of the playlist metadata file, relative to the archive directory
-# playlist_metadata_filename: playlists_metadata.csv
+# playlist_metadata_filename: playlists_metadata.json
 
 # The URL of the remote repository to push the archive to
 # remote_url: git@github.com:username/spotify-archive.git
