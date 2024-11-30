@@ -62,6 +62,7 @@ def fetch_playlists(sp, config):
     """
     Fetches all playlists for the authenticated user, including track details.
     """
+    yield 'Fetching playlists from Spotify...'
     playlists = []
     seen_playlist_ids = set()
     results = sp.current_user_playlists()
@@ -160,6 +161,7 @@ def write_playlists_metadata_json(playlists, config):
     """
     Writes playlist metadata to JSON file.
     """
+    yield 'Saving playlist metadata file'
     with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as jsonfile:
         playlists_without_tracks = [{k: v for k, v in p.items() if k != 'tracks'} for p in playlists]
         json.dump(playlists_without_tracks, jsonfile, indent=2)
@@ -168,6 +170,7 @@ def write_playlist_tracks_json(playlists, config):
     """
     Exports each playlist as a separate JSON file in the playlists folder.
     """
+    yield 'Saving playlist files'
     playlists_path = f"{config['archive_dir']}/{config['playlists_dir']}"
     
     # Remove any existing playlist files
@@ -178,7 +181,6 @@ def write_playlist_tracks_json(playlists, config):
     
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
-        yield f'Exporting playlist: {playlist_name}'
         filename = f'{playlists_path}/{playlist_name}.json'
 
         with open(filename, 'w', newline='', encoding='utf-8') as jsonfile:
@@ -310,7 +312,7 @@ def run_export(sp, config):
     playlists = yield from fetch_playlists(sp, config)
     repo = setup_archive(config)
     # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
-    write_playlists_metadata_json(playlists, config)
+    yield from write_playlists_metadata_json(playlists, config)
     yield from write_playlist_tracks_json(playlists, config)
     yield from commit_changes(repo, config)
     yield from push_to_remote(repo, config)
