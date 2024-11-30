@@ -1,6 +1,19 @@
 # Use a Python base image
 FROM gcr.io/google-appengine/python
 
+# Update apt package manager
+RUN apt-get update && apt-get install -y \
+    software-properties-common
+
+# Add the deadsnakes PPA to get the latest Python versions
+RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update
+
+# Install Python 3.x
+RUN apt-get install -y python3.11 python3.11-venv python3.11-distutils
+
+# Update symlink to use the new Python version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+RUN update-alternatives --config python3 --force
 RUN python3 --version
 
 # # Install git
