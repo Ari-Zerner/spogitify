@@ -1,4 +1,7 @@
-from flask import Flask, redirect, request, session
+from os import sendfile
+import shutil
+import tempfile
+from flask import Flask, request, redirect, session, Response, send_file, after_this_request
 from spogitify import *
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
@@ -7,16 +10,11 @@ import uuid
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-app.config.update(get_config())
 
 # Helper functions
 
 def setup_app():
-    config = get_config()
-    for k in ['spotify_client_id', 'spotify_client_secret', 'spotify_redirect_uri']:
-        if not config[k]:
-            raise ValueError(f"{k} must be set in config.yaml")
-        app.config[k] = config[k]
+    app.config.update(get_config())
 
 def spotify_oauth():
     return SpotifyOAuth(
@@ -55,6 +53,39 @@ def authorize():
         session['user_id'] = user_info['id']
         return redirect(session.pop('previous_page', '/'))
     return {"error": "Failed to get access token"}, 400
+
+@app.route('/export', methods=['GET'])
+def export():
+    sp = spotify()
+    if not sp:
+        return login_redirect()
+        
+    # Create temporary directory for this export
+    export_dir = tempfile.mkdtemp()
+    archive_dir = os.path.join(export_dir, 'spotify-archive')
+    config = app.config.copy()
+    config['archive_dir'] = archive_dir
+    host_url = request.host_url
+    
+    # Return initial response with progress indicator
+    def generate():
+        yield from map(lambda msg: msg + '\n', run_export(sp, config))
+        
+        yield "Creating zip file...\n"
+        zip_path = os.path.join(export_dir, 'spotify-archive.zip')
+        shutil.make_archive(zip_path[:-4], 'zip', archive_dir)
+        yield f"Download zip file: {host_url}download?path={zip_path}\n"
+        
+    return Response(generate(), mimetype='text/plain')
+
+@app.route('/download')
+def download():
+    zip_path = request.args['path']
+    if not zip_path.endswith('spotify-archive.zip'):
+        return {"error": "Path must be a Spotify archive"}, 400
+    if not os.path.exists(zip_path):
+        return {"error": "File not found"}, 404
+    return send_file(zip_path, as_attachment=True, download_name='spotify-archive.zip')
 
 @app.route('/')
 def whoami():
