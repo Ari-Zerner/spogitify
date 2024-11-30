@@ -44,8 +44,7 @@ def get_spotify_client(config):
     redirect_uri = config['spotify_redirect_uri']
 
     if not client_id or not client_secret or not redirect_uri:
-        print('Error: spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
-        exit(1)
+        raise ValueError('spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
 
@@ -70,7 +69,7 @@ def fetch_playlists(sp, config):
         for item in results['items']:
             if item and item['id'] not in seen_playlist_ids and include_playlist(item, config):
                 
-                print(f"Fetching playlist: {item['name']}")
+                yield f"Fetching playlist: {item['name']}"
                 playlist = {
                     'id': item['id'],
                     'name': item['name'],
@@ -179,7 +178,7 @@ def write_playlist_tracks_json(playlists, config):
     
     for playlist in playlists:
         playlist_name = playlist['name'].replace('/', '_')
-        print(f'Exporting playlist: {playlist_name}')
+        yield f'Exporting playlist: {playlist_name}'
         filename = f'{playlists_path}/{playlist_name}.json'
 
         with open(filename, 'w', newline='', encoding='utf-8') as jsonfile:
@@ -263,7 +262,7 @@ def commit_changes(repo, config):
     """
     repo.git.add(A=True) # Add all changes including deletions to git index
     if repo.is_dirty(): # Don't commit if there are no changes
-        print('Committing changes')
+        yield 'Committing changes'
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         has_commits = bool(repo.git.rev_list('--all'))
         if has_commits:
@@ -272,14 +271,14 @@ def commit_changes(repo, config):
             commit_message = f"Initial sync {timestamp}"
         repo.index.commit(commit_message)
     else:
-        print('No changes to commit')
+        yield 'No changes to commit'
 
 def push_to_remote(repo, config):
     """
     Pushes any changes in `archive_dir` to the remote repository if configured.
     """
     if config['remote_url']:
-        print('Pushing to remote')
+        yield 'Pushing to remote'
         current_branch = repo.head.ref
         if current_branch.tracking_branch():
             repo.remotes[config['remote_name']].push()
@@ -304,19 +303,23 @@ def run_export(sp, config):
 
     Note:
         This function may take a while to complete, especially for users with many playlists.
+        
+    Returns:
+        A generator of status messages.
     """
-    playlists = fetch_playlists(sp, config)
+    playlists = yield from fetch_playlists(sp, config)
     repo = setup_archive(config)
     # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
     write_playlists_metadata_json(playlists, config)
-    write_playlist_tracks_json(playlists, config)
-    commit_changes(repo, config)
-    push_to_remote(repo, config)
+    yield from write_playlist_tracks_json(playlists, config)
+    yield from commit_changes(repo, config)
+    yield from push_to_remote(repo, config)
 
 def main():
     config = get_config()
     sp = get_spotify_client(config)
-    run_export(sp, config)
+    for status in run_export(sp, config):
+        print(status)
 
 if __name__ == '__main__':
     main()
