@@ -12,8 +12,8 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 # Command to run the app
 CMD ["gunicorn", "--bind", ":$PORT", "--workers", "1", "--threads", "8", "--timeout", "0", "main:app"]
