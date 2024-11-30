@@ -5,7 +5,10 @@ FROM gcr.io/google-appengine/python
 RUN apt-get update && \
     apt-get install -y git && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    export GIT_PYTHON_GIT_EXECUTABLE=$(which git)
+
+
 
 # Copy local code to the container image.
 WORKDIR /app
