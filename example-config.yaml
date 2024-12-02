@@ -12,8 +12,9 @@ spotify_redirect_uri: localhost:5000/authorize
 # The path of the playlist metadata file, relative to the archive directory
 # playlist_metadata_filename: playlists_metadata.json
 
-# The URL of the remote repository to push the archive to
-# remote_url: git@github.com:username/spotify-archive.git
+# Name of GitHub repository to create/use. If set, requires github_token.
+# remote_name: my-spotify-archive
+# github_token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Exclude Spotify-generated playlists? (defaults to yes)
 # exclude_spotify_playlists: yes

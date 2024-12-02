@@ -52,19 +52,6 @@ def authorize():
         return redirect(session.pop('previous_page', '/'))
     return {"error": "Failed to get access token"}, 400
 
-def create_remote_repo():
-    github_token = os.environ.get('GITHUB_TOKEN')
-    remote_url = None
-    if github_token:
-        gh = Github(github_token)
-        repo_name = f"spotify-archive-{session['user_id']}"
-        try:
-            gh.get_user().get_repo(repo_name)
-        except:
-            gh.get_user().create_repo(repo_name)
-        remote_url = f"https://{github_token}@github.com/{gh.get_user().login}/{repo_name}.git"
-    return remote_url
-
 @app.route('/export', methods=['GET'])
 def export():
     sp = spotify()
@@ -74,7 +61,6 @@ def export():
     # Create temporary directory for this export
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
-    remote_url = create_remote_repo()
     config = app.config.copy()
     config.update({
         'archive_dir': archive_dir,
@@ -82,8 +68,7 @@ def export():
         'playlist_metadata_filename': 'playlists_metadata.json',
         'exclude_spotify_playlists': True,
         'exclude_playlists': [],
-        'remote_url': remote_url,
-        'remote_name': 'origin',
+        'remote_name': f"spotify-archive-{session['user_id']}"
     })
     host_url = request.host_url
     

@@ -29,7 +29,10 @@ pip install spotipy gitpython pyyaml
 
 3. Copy `example-config.yaml` to `config.yaml` and modify `config.yaml` with your Spotify credentials.
 
-4. (optional) If you want to back up your Spotify archive remotely, create an empty repository on GitHub or your preferred remote hosting service and set the remote URL in `config.yaml`.
+4. (optional) To back up your Spotify archive to GitHub:
+   - Create a [GitHub personal access token](https://github.com/settings/tokens)
+   - Add the token to `config.yaml` as `github_token` or set it in the GITHUB_TOKEN environment variable
+   - Set `remote_name` in `config.yaml` to the desired repository name (it will be created if it doesn't exist)
 
 5. (optional) Modify `config.yaml` with any other desired configuration (see [Configuration](#configuration)).
 
@@ -82,7 +85,8 @@ Spogitify uses a YAML configuration file named `config.yaml` to store the follow
 - `archive_dir`: The directory where the playlist backups and metadata will be stored (default: `spotify-archive`).
 - `playlists_dir`: The subdirectory within `archive_dir` where the individual playlist CSV files will be stored (default: `playlists`).
 - `playlist_metadata_filename`: The name of the CSV file that will contain the playlist metadata (default: `playlists_metadata.csv`).
-- `remote_url`: The URL of the remote repository to push the archive to (default: `None`). The remote repository must already exist.
+- `remote_name`: Name of GitHub repository to create/use (default: `None`). Requires github_token.
+- `github_token`: GitHub personal access token. Can also be set in GITHUB_TOKEN environment variable.
 - `exclude_spotify_playlists`: Whether to exclude Spotify-generated playlists from the archive (default: `yes`).
 - `exclude_playlists`: A list of specific playlists to exclude from the archive (default: `[]`).
 
