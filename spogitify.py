@@ -309,8 +309,8 @@ def run_export(sp, config):
     Returns:
         A generator of status messages.
     """
-    playlists = yield from fetch_playlists(sp, config)
     repo = setup_archive(config)
+    playlists = yield from fetch_playlists(sp, config)
     # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
     yield from write_playlists_metadata_json(playlists, config)
     yield from write_playlist_tracks_json(playlists, config)
