@@ -94,11 +94,17 @@ def home():
     if not sp:
         return login_redirect()
     
-    html = """
+    user = sp.me()
+    html = f"""
     <html>
     <head><title>Spogitify - Spotify Playlist Backup</title></head>
     <body style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif;">
-        <h1>Spogitify</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Spogitify</h1>
+            <div>
+                Logged in with Spotify as {user['display_name']}
+            </div>
+        </div>
         <p>Spogitify backs up your Spotify playlists to a Git repository, allowing you to track how your playlists change over time.</p>
         <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
