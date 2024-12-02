@@ -7,19 +7,21 @@ from git import Repo, exc
 import yaml
 import re
 
-def get_config():
+def get_config(config_file=None):
     """
     Reads configuration from a YAML file and returns a dictionary with configuration values.
 
     This function attempts to read from 'config.yaml'. If the file is not found,
     it falls back to default values for all configuration options.
     """
+    config = {}
     # Read configuration from YAML file
-    try:
-        with open('config.yaml', 'r') as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        config = {}
+    if config_file:
+        try:
+            with open(config_file, 'r') as file:
+                config = yaml.safe_load(file)
+        except FileNotFoundError:
+            pass
 
     # Get configuration values with default fallbacks
     return {
@@ -30,9 +32,9 @@ def get_config():
         'exclude_playlists': config.get('exclude_playlists', []),
         'remote_name': config.get('remote_name', None),
         'github_token': config.get('github_token', os.environ.get('GITHUB_TOKEN')),
-        'spotify_client_id': config.get('spotify_client_id'),
-        'spotify_client_secret': config.get('spotify_client_secret'),
-        'spotify_redirect_uri': config.get('spotify_redirect_uri')
+        'spotify_client_id': config.get('spotify_client_id', os.environ.get('SPOTIFY_CLIENT_ID')),
+        'spotify_client_secret': config.get('spotify_client_secret', os.environ.get('SPOTIFY_CLIENT_SECRET')),
+        'spotify_redirect_uri': config.get('spotify_redirect_uri', os.environ.get('SPOTIFY_REDIRECT_URI'))
     }
 
 def get_spotify_client(config):
@@ -334,7 +336,7 @@ def run_export(sp, config):
     yield from push_to_remote(repo, config)
 
 def main():
-    config = get_config()
+    config = get_config('config.yaml')
     sp = get_spotify_client(config)
     for status in run_export(sp, config):
         print(status)
