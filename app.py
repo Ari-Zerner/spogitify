@@ -61,7 +61,15 @@ def export():
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
     config = app.config.copy()
-    config['archive_dir'] = archive_dir
+    config.update({
+        'archive_dir': archive_dir,
+        'playlists_dir': 'playlists',
+        'playlist_metadata_filename': 'playlists_metadata.json',
+        'exclude_spotify_playlists': True,
+        'exclude_playlists': [],
+        'remote_url': None,
+        'remote_name': 'origin',
+    })
     host_url = request.host_url
     
     # Return initial response with progress indicator
@@ -96,5 +104,4 @@ def whoami():
     }, 200
 
 if __name__ == '__main__':
-    setup_app()
     app.run(debug=True)
