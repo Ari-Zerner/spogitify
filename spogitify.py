@@ -9,34 +9,32 @@ import re
 
 REMOTE_NAME = 'origin'
 
-def get_config(config_file=None):
+def get_config(base_config={}):
     """
-    Reads configuration from a YAML file and returns a dictionary with configuration values.
+    Merges base configuration with default values and returns a dictionary with configuration values.
 
-    This function attempts to read from 'config.yaml'. If the file is not found,
-    it falls back to default values for all configuration options.
+    This function takes a base configuration dictionary (typically loaded from config.yaml) and
+    merges it with default values for all configuration options. Environment variables are used
+    as fallbacks for sensitive values like API credentials.
+
+    Args:
+        base_config (dict): Base configuration dictionary, defaults to empty dict if not provided
+
+    Returns:
+        dict: Complete configuration dictionary with all required keys
     """
-    config = {}
-    # Read configuration from YAML file
-    if config_file:
-        try:
-            with open(config_file, 'r') as file:
-                config = yaml.safe_load(file)
-        except FileNotFoundError:
-            pass
-
     # Get configuration values with default fallbacks
     return {
-        'archive_dir': os.path.expanduser(config.get('archive_dir', 'spotify-archive')),
-        'playlists_dir': config.get('playlists_dir', 'playlists'),
-        'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.json'),
-        'exclude_spotify_playlists': config.get('exclude_spotify_playlists', True),
-        'exclude_playlists': config.get('exclude_playlists', []),
-        'repo_name': config.get('repo_name', None),
-        'github_token': config.get('github_token', os.environ.get('GITHUB_TOKEN')),
-        'spotify_client_id': config.get('spotify_client_id', os.environ.get('SPOTIFY_CLIENT_ID')),
-        'spotify_client_secret': config.get('spotify_client_secret', os.environ.get('SPOTIFY_CLIENT_SECRET')),
-        'spotify_redirect_uri': config.get('spotify_redirect_uri', os.environ.get('SPOTIFY_REDIRECT_URI'))
+        'archive_dir': os.path.expanduser(base_config.get('archive_dir', 'spotify-archive')),
+        'playlists_dir': base_config.get('playlists_dir', 'playlists'),
+        'playlist_metadata_filename': base_config.get('playlist_metadata_filename', 'playlists_metadata.json'),
+        'exclude_spotify_playlists': base_config.get('exclude_spotify_playlists', True),
+        'exclude_playlists': base_config.get('exclude_playlists', []),
+        'repo_name': base_config.get('repo_name', None),
+        'github_token': base_config.get('github_token', os.environ.get('GITHUB_TOKEN')),
+        'spotify_client_id': base_config.get('spotify_client_id', os.environ.get('SPOTIFY_CLIENT_ID')),
+        'spotify_client_secret': base_config.get('spotify_client_secret', os.environ.get('SPOTIFY_CLIENT_SECRET')),
+        'spotify_redirect_uri': base_config.get('spotify_redirect_uri', os.environ.get('SPOTIFY_REDIRECT_URI'))
     }
 
 def get_spotify_client(config):
@@ -337,8 +335,12 @@ def run_export(sp, config):
     yield from commit_changes(repo, config)
     yield from push_to_remote(repo, config)
 
+def load_config_file():
+    with open('config.yaml', 'r') as file:
+        return yaml.safe_load(file)
+
 def main():
-    config = get_config('config.yaml')
+    config = get_config(load_config_file())
     sp = get_spotify_client(config)
     for status in run_export(sp, config):
         print(status)

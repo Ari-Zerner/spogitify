@@ -62,8 +62,7 @@ def export():
     # Create temporary directory for this export
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
-    config = get_config()
-    config.update({
+    config = get_config({
         'archive_dir': archive_dir,
         'repo_name': f"spotify-archive-{session['user_id']}"
     })
