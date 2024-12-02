@@ -13,14 +13,11 @@ app.secret_key = os.urandom(24)
 
 # Helper functions
 
-def setup_app():
-    app.config.update(get_config())
-
 def spotify_oauth():
     return SpotifyOAuth(
-        client_id=app.config['spotify_client_id'],
-        client_secret=app.config['spotify_client_secret'],
-        redirect_uri=app.config['spotify_redirect_uri'],
+        client_id=os.environ['SPOTIFY_CLIENT_ID'],
+        client_secret=os.environ['SPOTIFY_CLIENT_SECRET'],
+        redirect_uri=os.environ['SPOTIFY_REDIRECT_URI'],
         scope='user-library-read playlist-read-private',
         cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())
@@ -64,7 +61,15 @@ def export():
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
     config = app.config.copy()
-    config['archive_dir'] = archive_dir
+    config.update({
+        'archive_dir': archive_dir,
+        'playlists_dir': 'playlists',
+        'playlist_metadata_filename': 'playlists_metadata.json',
+        'exclude_spotify_playlists': True,
+        'exclude_playlists': [],
+        'remote_url': None,
+        'remote_name': 'origin',
+    })
     host_url = request.host_url
     
     # Return initial response with progress indicator
@@ -99,5 +104,4 @@ def whoami():
     }, 200
 
 if __name__ == '__main__':
-    setup_app()
     app.run(debug=True)
