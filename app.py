@@ -108,15 +108,29 @@ def download():
     return send_file(zip_path, as_attachment=True, download_name='spotify-archive.zip')
 
 @app.route('/')
-def whoami():
+def home():
     sp = spotify()
     if not sp:
         return login_redirect()
-    user_info = sp.me()
-    return {
-        'name': user_info['display_name'],
-        'id': user_info['id']
-    }, 200
+    
+    html = """
+    <html>
+    <head><title>Spogitify - Spotify Playlist Backup</title></head>
+    <body style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif;">
+        <h1>Spogitify</h1>
+        <p>Spogitify backs up your Spotify playlists to a Git repository, allowing you to track how your playlists change over time.</p>
+        <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
+        </div>
+        <form action="/export" method="get">
+            <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
+                Start Backup
+            </button>
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 if __name__ == '__main__':
     app.run(debug=True)
