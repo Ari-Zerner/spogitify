@@ -65,7 +65,7 @@ def export():
     config = get_config()
     config.update({
         'archive_dir': archive_dir,
-        'remote_name': f"spotify-archive-{session['user_id']}"
+        'repo_name': f"spotify-archive-{session['user_id']}"
     })
     host_url = request.host_url
     

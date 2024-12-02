@@ -7,6 +7,8 @@ from git import Repo, exc
 import yaml
 import re
 
+REMOTE_NAME = 'origin'
+
 def get_config(config_file=None):
     """
     Reads configuration from a YAML file and returns a dictionary with configuration values.
@@ -30,7 +32,7 @@ def get_config(config_file=None):
         'playlist_metadata_filename': config.get('playlist_metadata_filename', 'playlists_metadata.json'),
         'exclude_spotify_playlists': config.get('exclude_spotify_playlists', True),
         'exclude_playlists': config.get('exclude_playlists', []),
-        'remote_name': config.get('remote_name', None),
+        'repo_name': config.get('repo_name', None),
         'github_token': config.get('github_token', os.environ.get('GITHUB_TOKEN')),
         'spotify_client_id': config.get('spotify_client_id', os.environ.get('SPOTIFY_CLIENT_ID')),
         'spotify_client_secret': config.get('spotify_client_secret', os.environ.get('SPOTIFY_CLIENT_SECRET')),
@@ -125,17 +127,17 @@ def artists_string(artists):
 
 def get_remote_url(config):
     """
-    Creates or gets GitHub repository URL if github_token and remote_name are set.
+    Creates or gets GitHub repository URL if github_token and repo_name are set.
     Returns the remote URL if successful, None otherwise.
     """
-    if config['remote_name'] and config['github_token']:
+    if config['repo_name'] and config['github_token']:
         from github import Github
         gh = Github(config['github_token'])
         try:
-            gh.get_user().get_repo(config['remote_name'])
+            gh.get_user().get_repo(config['repo_name'])
         except:
-            gh.get_user().create_repo(config['remote_name'])
-        return f"https://{config['github_token']}@github.com/{gh.get_user().login}/{config['remote_name']}.git"
+            gh.get_user().create_repo(config['repo_name'])
+        return f"https://{config['github_token']}@github.com/{gh.get_user().login}/{config['repo_name']}.git"
     return None
 
 def setup_archive(config):
@@ -158,12 +160,12 @@ def setup_archive(config):
         except exc.GitCommandError:
             repo = Repo.init(config['archive_dir'])
 
-        if config['remote_name'] not in repo.remotes:
-            repo.create_remote(config['remote_name'], remote_url)
+        if REMOTE_NAME not in repo.remotes:
+            repo.create_remote(REMOTE_NAME, remote_url)
         else:
-            repo.remotes[config['remote_name']].set_url(remote_url)
+            repo.remotes[REMOTE_NAME].set_url(remote_url)
 
-        remote = repo.remotes[config['remote_name']]
+        remote = repo.remotes[REMOTE_NAME]
         if remote.refs:
             try:
                 remote.fetch()
@@ -297,13 +299,13 @@ def push_to_remote(repo, config):
     """
     Pushes any changes in `archive_dir` to the remote repository if configured.
     """
-    if config['remote_name']:
+    if config['repo_name']:
         yield 'Pushing to remote'
         current_branch = repo.head.ref
         if current_branch.tracking_branch():
-            repo.remotes[config['remote_name']].push()
+            repo.remotes[REMOTE_NAME].push()
         else:
-            repo.remotes[config['remote_name']].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+            repo.remotes[REMOTE_NAME].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
             
 def run_export(sp, config):
     """

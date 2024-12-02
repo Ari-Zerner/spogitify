@@ -13,7 +13,7 @@ spotify_redirect_uri: localhost:5000/authorize
 # playlist_metadata_filename: playlists_metadata.json
 
 # Name of GitHub repository to create/use. If set, requires github_token.
-# remote_name: my-spotify-archive
+# repo_name: spotify-archive
 # github_token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Exclude Spotify-generated playlists? (defaults to yes)
