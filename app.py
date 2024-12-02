@@ -13,14 +13,11 @@ app.secret_key = os.urandom(24)
 
 # Helper functions
 
-def setup_app():
-    app.config.update(get_config())
-
 def spotify_oauth():
     return SpotifyOAuth(
-        client_id=app.config['spotify_client_id'],
-        client_secret=app.config['spotify_client_secret'],
-        redirect_uri=app.config['spotify_redirect_uri'],
+        client_id=os.environ['SPOTIFY_CLIENT_ID'],
+        client_secret=os.environ['SPOTIFY_CLIENT_SECRET'],
+        redirect_uri=os.environ['SPOTIFY_REDIRECT_URI'],
         scope='user-library-read playlist-read-private',
         cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())

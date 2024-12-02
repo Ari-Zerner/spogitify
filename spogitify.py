@@ -30,9 +30,9 @@ def get_config():
         'exclude_playlists': config.get('exclude_playlists', []),
         'remote_url': config.get('remote_url', None),
         'remote_name': 'origin',
-        'spotify_client_id': config.get('spotify_client_id', os.getenv('SPOTIFY_CLIENT_ID') or ''),
-        'spotify_client_secret': config.get('spotify_client_secret', os.getenv('SPOTIFY_CLIENT_SECRET') or ''),
-        'spotify_redirect_uri': config.get('spotify_redirect_uri', os.getenv('SPOTIFY_REDIRECT_URI') or '')
+        'spotify_client_id': config.get('spotify_client_id'),
+        'spotify_client_secret': config.get('spotify_client_secret'),
+        'spotify_redirect_uri': config.get('spotify_redirect_uri')
     }
 
 def get_spotify_client(config):
