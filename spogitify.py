@@ -148,8 +148,6 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
-    os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
-
     repo = None
     remote_url = get_remote_url(config)
     if remote_url:
@@ -172,6 +170,8 @@ def setup_archive(config):
                 pass
     else:
         repo = Repo.init(config['archive_dir'])
+        
+    os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
 
     return repo
 
