@@ -67,43 +67,68 @@ def fetch_playlists(sp, config):
     yield 'Fetching playlists from Spotify...'
     playlists = []
     seen_playlist_ids = set()
+    
+    # Load existing playlist metadata
+    existing_metadata = {}
+    metadata_path = os.path.join(config['archive_dir'], config['playlist_metadata_filename'])
+    try:
+        with open(metadata_path, 'r') as f:
+            existing_metadata =  {p['id']: p for p in json.load(f)}
+    except:
+        pass  # If metadata file is invalid, proceed as if it doesn't exist
+    
     results = sp.current_user_playlists()
     while results:
         for item in results['items']:
             if item and item['id'] not in seen_playlist_ids and include_playlist(item, config):
                 
                 yield f"Fetching playlist: {item['name']}"
-                playlist = {
-                    'id': item['id'],
-                    'name': item['name'],
-                    'owner': item['owner']['display_name']
-                }
-                total_length_ms = 0
+                playlist = {}
                 
-                # Fetch tracks for the playlist
-                tracks = []
-                track_results = sp.playlist_tracks(playlist['id'])
-                while track_results:
-                    for track_item in track_results['items']:
-                        track = track_item['track']
-                        if track:
-                            track_info = {
-                                'name': track['name'],
-                                'artist': artists_string(track['artists']),
-                                'id': track['id'],
-                                'added_at': track_item.get('added_at', ''),
-                                'added_by': track_item.get('added_by', {}).get('id', ''),
-                                'length_seconds': track['duration_ms'] // 1000
-                            }
-                            tracks.append(track_info)
-                            total_length_ms += track['duration_ms']
-                    track_results = sp.next(track_results)
-                
-                playlist['tracks'] = tracks
-                playlist['num_songs'] = len(tracks)
-                playlist['total_length_seconds'] = total_length_ms // 1000
+                if item['id'] in existing_metadata and existing_metadata[item['id']]['snapshot_id'] == item['snapshot_id']:
+                    # If the playlist hasn't changed, reuse saved information
+                    try:
+                        with open(os.path.join(config['playlists_dir'], item['name'].replace('/', '_') + '.json'), 'r') as f:
+                            playlist = existing_metadata[item['id']]
+                            playlist['tracks'] = json.load(f)
+                    except:
+                        pass
+                    
+                if 'tracks' not in playlist:
+                    playlist = {
+                        'id': item['id'],
+                        'name': item['name'],
+                        'owner': item['owner']['display_name'],
+                        'snapshot_id': item['snapshot_id']
+                    }
+                    total_length_ms = 0
+                    
+                    # Fetch tracks for the playlist
+                    tracks = []
+                    track_results = sp.playlist_tracks(playlist['id'])
+                    while track_results:
+                        for track_item in track_results['items']:
+                            track = track_item['track']
+                            if track:
+                                track_info = {
+                                    'name': track['name'],
+                                    'artist': artists_string(track['artists']),
+                                    'id': track['id'],
+                                    'added_at': track_item.get('added_at', ''),
+                                    'added_by': track_item.get('added_by', {}).get('id', ''),
+                                    'length_seconds': track['duration_ms'] // 1000
+                                }
+                                tracks.append(track_info)
+                                total_length_ms += track['duration_ms']
+                        track_results = sp.next(track_results)
+                    
+                    playlist['tracks'] = tracks
+                    playlist['num_songs'] = len(tracks)
+                    playlist['total_length_seconds'] = total_length_ms // 1000
+                    
                 playlists.append(playlist)
                 seen_playlist_ids.add(item['id'])
+                
         results = sp.next(results)
     
     playlists.sort(key=lambda playlist: playlist['id'])
