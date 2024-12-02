@@ -1,0 +1,4 @@
+Flask==3.1.0
+spotipy==2.24.0
+pyaml==24.9.0
+GitPython==3.1.43
