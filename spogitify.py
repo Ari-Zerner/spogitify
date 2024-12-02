@@ -146,9 +146,9 @@ def setup_archive(config):
             repo.remotes[config['remote_name']].set_url(config['remote_url'])
 
         remote = repo.remotes[config['remote_name']]
-        remote.fetch()
         if remote.refs:
             try:
+                remote.fetch()
                 remote.pull(remote.refs[0].remote_head)
             except exc.GitCommandError:
                 pass
