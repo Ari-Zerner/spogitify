@@ -62,7 +62,7 @@ def create_remote_repo():
             gh.get_user().get_repo(repo_name)
         except:
             gh.get_user().create_repo(repo_name)
-        remote_url = f"https://x-access-token:{github_token}@github.com/{gh.get_user().login}/{repo_name}.git"
+        remote_url = f"https://{github_token}@github.com/{gh.get_user().login}/{repo_name}.git"
     return remote_url
 
 @app.route('/export', methods=['GET'])
