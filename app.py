@@ -3,7 +3,6 @@ from flask import Flask, request, redirect, session, Response
 from spogitify import *
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
-from github import Github
 import uuid
 
 app = Flask(__name__)
@@ -82,11 +81,8 @@ def home():
         return login_redirect()
     
     user = sp.me()
-    config = get_config()
-    repo_url = ""
-    if config['github_token']:
-        gh = Github(config['github_token'])
-        repo_url = f'https://github.com/{gh.get_user().login}/{repo_name()}'
+    config = get_config({'repo_name': repo_name()})
+    repo_url = get_remote_url(config)
     html = f"""
     <html>
     <head><title>Spogitify - Spotify Playlist Backup</title></head>

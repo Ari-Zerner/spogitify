@@ -149,7 +149,7 @@ def artists_string(artists):
             return ', '.join(artist_names)
     return 'Unknown Artist'
 
-def get_remote_url(config):
+def get_remote_url(config, with_token=False):
     """
     Creates or gets GitHub repository URL if github_token and repo_name are set.
     Returns the remote URL if successful, None otherwise.
@@ -161,7 +161,8 @@ def get_remote_url(config):
             gh.get_user().get_repo(config['repo_name'])
         except:
             gh.get_user().create_repo(config['repo_name'])
-        return f"https://{config['github_token']}@github.com/{gh.get_user().login}/{config['repo_name']}.git"
+        prefix = f"https://{config['github_token']}@" if with_token else "https://"
+        return f"{prefix}github.com/{gh.get_user().login}/{config['repo_name']}.git"
     return None
 
 def setup_archive(config):
@@ -175,7 +176,7 @@ def setup_archive(config):
     Returns the local Git repository object for further operations.
     """
     repo = None
-    remote_url = get_remote_url(config)
+    remote_url = get_remote_url(config, with_token=True)
     if remote_url:
         try:
             repo = Repo.clone_from(remote_url, config['archive_dir'])
