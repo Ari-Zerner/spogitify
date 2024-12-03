@@ -8,6 +8,7 @@ import yaml
 import re
 
 REMOTE_NAME = 'origin'
+DEFAULT_BRANCH = 'main'
 
 def get_config(base_config={}):
     """
@@ -328,7 +329,7 @@ def push_to_remote(repo, config):
         if current_branch.tracking_branch():
             repo.remotes[REMOTE_NAME].push()
         else:
-            repo.remotes[REMOTE_NAME].push(refspec=f"{current_branch.name}:{current_branch.name}", set_upstream=True)
+            repo.remotes[REMOTE_NAME].push(refspec=f"{current_branch.name}:{DEFAULT_BRANCH}", set_upstream=True)
             
 def run_export(sp, config):
     """
