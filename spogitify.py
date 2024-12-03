@@ -354,13 +354,17 @@ def run_export(sp, config):
     Returns:
         A generator of status messages.
     """
-    repo = setup_archive(config)
-    playlists = yield from fetch_playlists(sp, config)
-    # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
-    yield from write_playlists_metadata_json(playlists, config)
-    yield from write_playlist_tracks_json(playlists, config)
-    yield from commit_changes(repo, config)
-    yield from push_to_remote(repo, config)
+    try:
+        repo = setup_archive(config)
+        playlists = yield from fetch_playlists(sp, config)
+        # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
+        yield from write_playlists_metadata_json(playlists, config)
+        yield from write_playlist_tracks_json(playlists, config)
+        yield from commit_changes(repo, config)
+        yield from push_to_remote(repo, config)
+    except Exception as e:
+        yield f"Error: {str(e)}"
+        raise e
 
 def load_config_file():
     with open('config.yaml', 'r') as file:
