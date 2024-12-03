@@ -53,6 +53,9 @@ def authorize():
         return redirect(session.pop('previous_page', '/'))
     return {"error": "Failed to get access token"}, 400
 
+def repo_name():
+    return f"spotify-archive-{session['user_id']}"
+
 @app.route('/export', methods=['GET'])
 def export():
     sp = spotify()
@@ -64,7 +67,7 @@ def export():
     archive_dir = os.path.join(export_dir, 'spotify-archive')
     config = get_config({
         'archive_dir': archive_dir,
-        'repo_name': f"spotify-archive-{session['user_id']}"
+        'repo_name': repo_name()
     })
     host_url = request.host_url
     
@@ -95,6 +98,11 @@ def home():
         return login_redirect()
     
     user = sp.me()
+    config = get_config()
+    repo_url = ""
+    if config['github_token']:
+        gh = Github(config['github_token'])
+        repo_url = f'https://github.com/{gh.get_user().login}/{repo_name()}'
     html = f"""
     <html>
     <head><title>Spogitify - Spotify Playlist Backup</title></head>
@@ -109,11 +117,16 @@ def home():
         <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
         </div>
-        <form action="/export" method="get">
+        <form action="/export" method="get" target="_blank">
             <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
                 Start Backup
             </button>
         </form>
+        {f'''<form action="{repo_url}" method="get" target="_blank">
+            <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
+                View on GitHub
+            </button>
+        </form>''' if repo_url else ''}
     </body>
     </html>
     """
