@@ -175,6 +175,11 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
+    def checkout_default_branch(repo):
+        if DEFAULT_BRANCH not in repo.heads:
+            repo.create_head(DEFAULT_BRANCH)
+        repo.heads[DEFAULT_BRANCH].checkout()
+
     repo = None
     remote_url = get_remote_url(config, with_token=True)
     if remote_url:
@@ -183,6 +188,8 @@ def setup_archive(config):
         except exc.GitCommandError:
             repo = Repo.init(config['archive_dir'])
 
+        checkout_default_branch(repo)
+        
         if REMOTE_NAME not in repo.remotes:
             repo.create_remote(REMOTE_NAME, remote_url)
         else:
@@ -197,7 +204,7 @@ def setup_archive(config):
                 pass
     else:
         repo = Repo.init(config['archive_dir'])
-        
+        checkout_default_branch(repo)
     os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
 
     return repo
@@ -327,10 +334,7 @@ def push_to_remote(repo, config):
     if config['repo_name']:
         yield 'Pushing to remote'
         current_branch = repo.head.ref
-        if current_branch.tracking_branch():
-            repo.remotes[REMOTE_NAME].push()
-        else:
-            repo.remotes[REMOTE_NAME].push(refspec=f"{current_branch.name}:{DEFAULT_BRANCH}", set_upstream=True)
+        repo.remotes[REMOTE_NAME].push(refspec=f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}", set_upstream=True)
             
 def run_export(sp, config):
     """
