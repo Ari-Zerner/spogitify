@@ -1,12 +1,9 @@
-from os import sendfile
-import shutil
 import tempfile
-from flask import Flask, request, redirect, session, Response, send_file, after_this_request
+from flask import Flask, request, redirect, session, Response
 from spogitify import *
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify
 from github import Github
-import time
 import uuid
 
 app = Flask(__name__)
@@ -74,22 +71,9 @@ def export():
     # Return initial response with progress indicator
     def generate():
         yield from map(lambda msg: msg + '\n', run_export(sp, config))
-        
-        yield "Creating zip file...\n"
-        zip_path = os.path.join(export_dir, 'spotify-archive.zip')
-        shutil.make_archive(zip_path[:-4], 'zip', archive_dir)
-        yield f"Download zip file: {host_url}download?path={zip_path}\n"
+        yield "Export complete! Close this tab and view your archive on GitHub."
         
     return Response(generate(), mimetype='text/plain')
-
-@app.route('/download')
-def download():
-    zip_path = request.args['path']
-    if not zip_path.endswith('spotify-archive.zip'):
-        return {"error": "Path must be a Spotify archive"}, 400
-    if not os.path.exists(zip_path):
-        return {"error": "File not found"}, 404
-    return send_file(zip_path, as_attachment=True, download_name='spotify-archive.zip')
 
 @app.route('/')
 def home():
