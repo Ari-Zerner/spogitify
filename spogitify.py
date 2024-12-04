@@ -310,11 +310,7 @@ def commit_changes(repo, config):
     if repo.is_dirty(): # Don't commit if there are no changes
         yield 'Committing changes'
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        has_commits = bool(repo.git.rev_list('--all'))
-        if has_commits:
-            commit_message = f"Update {timestamp}\n\n{describe_changes(repo, config)}"
-        else:
-            commit_message = f"Initial sync {timestamp}"
+        commit_message = f"Archive {timestamp}\n\n{describe_changes(repo, config)}"
         repo.index.commit(commit_message)
     else:
         yield 'No changes to commit'
