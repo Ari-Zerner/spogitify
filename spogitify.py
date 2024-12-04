@@ -165,21 +165,6 @@ def get_remote_url(config, with_token=False):
         return f"{prefix}github.com/{gh.get_user().login}/{config['repo_name']}.git"
     return None
 
-def init_repo(repo):
-    with repo.config_writer() as git_config:
-        git_config.set_value('user', 'name', 'Spogitify')
-        git_config.set_value('user', 'email', 'spogitify@gmail.com')
-        
-    if not os.path.exists(os.path.join(repo.working_dir, 'README.md')):
-        with open(os.path.join(repo.working_dir, 'README.md'), 'w') as f:
-            f.write('Created by Spogitify')
-        repo.index.add(['README.md'])
-        repo.index.commit('Initial commit')
-        
-    if DEFAULT_BRANCH not in repo.heads:
-        repo.create_head(DEFAULT_BRANCH)
-    repo.heads[DEFAULT_BRANCH].checkout()
-
 def setup_archive(config):
     """
     Sets up the archive directory and initializes or updates the Git repository.
@@ -191,23 +176,29 @@ def setup_archive(config):
     Returns the local Git repository object for further operations.
     """
     repo = Repo.init(config['archive_dir'])
-    init_repo(repo)
+    with repo.config_writer() as git_config:
+        git_config.set_value('user', 'name', 'Spogitify')
+        git_config.set_value('user', 'email', 'spogitify@gmail.com')
+        
     remote_url = get_remote_url(config, with_token=True)
     if remote_url:
         try:
-            if REMOTE_NAME not in repo.remotes:
-                repo.create_remote(REMOTE_NAME, remote_url)
-            else:
-                repo.remotes[REMOTE_NAME].set_url(remote_url)
-            remote = repo.remotes[REMOTE_NAME]
-            if remote.refs:
-                remote.fetch()
-                remote.pull(remote.refs[0].remote_head)
+            repo.git.fetch(remote_url)
+            repo.git.pull(remote_url, DEFAULT_BRANCH)
         except exc.GitCommandError:
             pass
-            
+        
     os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
-
+    if not os.path.exists(os.path.join(repo.working_dir, 'README.md')):
+        with open(os.path.join(repo.working_dir, 'README.md'), 'w') as f:
+            f.write('Created by Spogitify')
+        repo.index.add(['README.md'])
+        repo.index.commit('Initial commit')
+        
+    if DEFAULT_BRANCH not in repo.heads:
+        repo.create_head(DEFAULT_BRANCH)
+    repo.heads[DEFAULT_BRANCH].checkout()
+    
     return repo
 
 def write_playlists_metadata_json(playlists, config):
@@ -332,10 +323,10 @@ def push_to_remote(repo, config):
     """
     Pushes any changes in `archive_dir` to the remote repository if configured.
     """
-    if config['repo_name']:
+    remote_url = get_remote_url(config, with_token=True)
+    if remote_url:
         yield 'Pushing to remote'
-        current_branch = repo.head.ref
-        repo.remotes[REMOTE_NAME].push(refspec=f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}", set_upstream=True)
+        repo.git.push(remote_url, f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}")
             
 def run_export(sp, config):
     """
