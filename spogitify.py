@@ -190,29 +190,21 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
+    repo = Repo.init(config['archive_dir'])
+    init_repo(repo)
     remote_url = get_remote_url(config, with_token=True)
-    repo = None
     if remote_url:
         try:
-            repo = Repo.clone_from(remote_url, config['archive_dir'])
-        except exc.GitCommandError:
-            pass
-    if not repo:
-        repo = Repo.init(config['archive_dir'])
-        init_repo(repo)
-        
-    if remote_url:
-        if REMOTE_NAME not in repo.remotes:
-            repo.create_remote(REMOTE_NAME, remote_url)
-        else:
-            repo.remotes[REMOTE_NAME].set_url(remote_url)
-        remote = repo.remotes[REMOTE_NAME]
-        if remote.refs:
-            try:
+            if REMOTE_NAME not in repo.remotes:
+                repo.create_remote(REMOTE_NAME, remote_url)
+            else:
+                repo.remotes[REMOTE_NAME].set_url(remote_url)
+            remote = repo.remotes[REMOTE_NAME]
+            if remote.refs:
                 remote.fetch()
                 remote.pull(remote.refs[0].remote_head)
-            except exc.GitCommandError:
-                pass
+        except exc.GitCommandError:
+            pass
             
     os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
 
