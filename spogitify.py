@@ -166,11 +166,16 @@ def get_remote_url(config, with_token=False):
     return None
 
 def init_repo(repo):
+    with repo.config_writer() as git_config:
+        git_config.set_value('user', 'name', 'Spogitify')
+        git_config.set_value('user', 'email', 'spogitify@gmail.com')
+        
     if not os.path.exists(os.path.join(repo.working_dir, 'README.md')):
         with open(os.path.join(repo.working_dir, 'README.md'), 'w') as f:
             f.write('Created by Spogitify')
         repo.index.add(['README.md'])
         repo.index.commit('Initial commit')
+        
     if DEFAULT_BRANCH not in repo.heads:
         repo.create_head(DEFAULT_BRANCH)
     repo.heads[DEFAULT_BRANCH].checkout()
@@ -185,23 +190,22 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
-    
-
-    repo = None
     remote_url = get_remote_url(config, with_token=True)
+    repo = None
     if remote_url:
         try:
             repo = Repo.clone_from(remote_url, config['archive_dir'])
         except exc.GitCommandError:
-            repo = Repo.init(config['archive_dir'])
-
+            pass
+    if not repo:
+        repo = Repo.init(config['archive_dir'])
         init_repo(repo)
         
+    if remote_url:
         if REMOTE_NAME not in repo.remotes:
             repo.create_remote(REMOTE_NAME, remote_url)
         else:
             repo.remotes[REMOTE_NAME].set_url(remote_url)
-
         remote = repo.remotes[REMOTE_NAME]
         if remote.refs:
             try:
@@ -209,9 +213,7 @@ def setup_archive(config):
                 remote.pull(remote.refs[0].remote_head)
             except exc.GitCommandError:
                 pass
-    else:
-        repo = Repo.init(config['archive_dir'])
-        init_repo(repo)
+            
     os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
 
     return repo
