@@ -301,28 +301,23 @@ def describe_changes(repo, config):
     
     return change_description
 
-def commit_changes(repo, config):
+def commit_and_push_changes(repo, config):
     """
-    Commits any changes in `archive_dir`. If there are previous commits, the commit message is "Update <timestamp>".
-    If it's the first commit, the message is "Initial sync <timestamp>".
+    Commits (and pushes to remote if configured) any changes in `archive_dir`.
     """
     repo.git.add(A=True) # Add all changes including deletions to git index
     if repo.is_dirty(): # Don't commit if there are no changes
         yield 'Committing changes'
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        commit_message = f"Archive {timestamp}\n\n{describe_changes(repo, config)}"
+        changelog = describe_changes(repo, config)
+        commit_message = f"Archive {timestamp}\n\n{changelog}"
         repo.index.commit(commit_message)
+        remote_url = get_remote_url(config, with_token=True)
+        if remote_url:
+            yield 'Pushing to remote'
+            repo.git.push(remote_url, f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}")
     else:
         yield 'No changes to commit'
-
-def push_to_remote(repo, config):
-    """
-    Pushes any changes in `archive_dir` to the remote repository if configured.
-    """
-    remote_url = get_remote_url(config, with_token=True)
-    if remote_url:
-        yield 'Pushing to remote'
-        repo.git.push(remote_url, f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}")
             
 def run_export(sp, config):
     """
@@ -352,8 +347,7 @@ def run_export(sp, config):
         # TODO: The metadata/tracks split is legacy from CSV storage, maybe the archive should just be a single JSON file?
         yield from write_playlists_metadata_json(playlists, config)
         yield from write_playlist_tracks_json(playlists, config)
-        yield from commit_changes(repo, config)
-        yield from push_to_remote(repo, config)
+        yield from commit_and_push_changes(repo, config)
     except Exception as e:
         yield f"Error: {str(e)}"
         raise e
