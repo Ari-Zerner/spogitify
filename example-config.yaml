@@ -1,25 +1,25 @@
 # Spotify application credentials
-spotify_client_id: your_spotify_client_id
-spotify_client_secret: your_spotify_client_secret
-spotify_redirect_uri: localhost:5000/authorize
+SPOTIFY_CLIENT_ID: your_spotify_client_id
+SPOTIFY_CLIENT_SECRET: your_spotify_client_secret
+SPOTIFY_REDIRECT_URI: localhost:5000/authorize
 
 # The full or relative (to pwd) path of the archive directory
-# archive_dir: spotify-archive
+# ARCHIVE_DIR: spotify-archive
 
 # The path of the playlists directory, relative to the archive directory
-# playlists_dir: playlists
+# PLAYLISTS_DIR: playlists
 
 # The path of the playlist metadata file, relative to the archive directory
-# playlist_metadata_filename: playlists_metadata.json
+# PLAYLIST_METADATA_FILENAME: playlists_metadata.json
 
 # Name of GitHub repository to create/use. If set, requires github_token.
-# repo_name: spotify-archive
-# github_token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# REPO_NAME: spotify-archive
+# GITHUB_TOKEN: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Exclude Spotify-generated playlists? (defaults to yes)
-# exclude_spotify_playlists: yes
+# EXCLUDE_SPOTIFY_PLAYLISTS: yes
 
 # Exclude specific playlists by name
-# exclude_playlists:
+# EXCLUDE_PLAYLISTS:
 #   - Secret Playlist 1
 #   - Secret Playlist 2

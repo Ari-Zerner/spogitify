@@ -10,6 +10,18 @@ import re
 REMOTE_NAME = 'origin'
 DEFAULT_BRANCH = 'main'
 
+# Configuration keys
+ARCHIVE_DIR_KEY = 'ARCHIVE_DIR'
+PLAYLISTS_DIR_KEY = 'PLAYLISTS_DIR'
+PLAYLIST_METADATA_FILENAME_KEY = 'PLAYLIST_METADATA_FILENAME'
+EXCLUDE_SPOTIFY_PLAYLISTS_KEY = 'EXCLUDE_SPOTIFY_PLAYLISTS'
+EXCLUDE_PLAYLISTS_KEY = 'EXCLUDE_PLAYLISTS'
+REPO_NAME_KEY = 'REPO_NAME'
+GITHUB_TOKEN_KEY = 'GITHUB_TOKEN'
+SPOTIFY_CLIENT_ID_KEY = 'SPOTIFY_CLIENT_ID'
+SPOTIFY_CLIENT_SECRET_KEY = 'SPOTIFY_CLIENT_SECRET'
+SPOTIFY_REDIRECT_URI_KEY = 'SPOTIFY_REDIRECT_URI'
+
 def get_config(base_config={}):
     """
     Merges base configuration with default values and returns a dictionary with configuration values.
@@ -26,28 +38,28 @@ def get_config(base_config={}):
     """
     # Get configuration values with default fallbacks
     return {
-        'archive_dir': os.path.expanduser(base_config.get('archive_dir', 'spotify-archive')),
-        'playlists_dir': base_config.get('playlists_dir', 'playlists'),
-        'playlist_metadata_filename': base_config.get('playlist_metadata_filename', 'playlists_metadata.json'),
-        'exclude_spotify_playlists': base_config.get('exclude_spotify_playlists', True),
-        'exclude_playlists': base_config.get('exclude_playlists', []),
-        'repo_name': base_config.get('repo_name', None),
-        'github_token': base_config.get('github_token', os.environ.get('GITHUB_TOKEN')),
-        'spotify_client_id': base_config.get('spotify_client_id', os.environ.get('SPOTIFY_CLIENT_ID')),
-        'spotify_client_secret': base_config.get('spotify_client_secret', os.environ.get('SPOTIFY_CLIENT_SECRET')),
-        'spotify_redirect_uri': base_config.get('spotify_redirect_uri', os.environ.get('SPOTIFY_REDIRECT_URI'))
+        ARCHIVE_DIR_KEY: os.path.expanduser(base_config.get(ARCHIVE_DIR_KEY, 'spotify-archive')),
+        PLAYLISTS_DIR_KEY: base_config.get(PLAYLISTS_DIR_KEY, 'playlists'),
+        PLAYLIST_METADATA_FILENAME_KEY: base_config.get(PLAYLIST_METADATA_FILENAME_KEY, 'playlists_metadata.json'),
+        EXCLUDE_SPOTIFY_PLAYLISTS_KEY: base_config.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY, True),
+        EXCLUDE_PLAYLISTS_KEY: base_config.get(EXCLUDE_PLAYLISTS_KEY, []),
+        REPO_NAME_KEY: base_config.get(REPO_NAME_KEY, None),
+        GITHUB_TOKEN_KEY: base_config.get(GITHUB_TOKEN_KEY, os.environ.get(GITHUB_TOKEN_KEY)),
+        SPOTIFY_CLIENT_ID_KEY: base_config.get(SPOTIFY_CLIENT_ID_KEY, os.environ.get(SPOTIFY_CLIENT_ID_KEY)),
+        SPOTIFY_CLIENT_SECRET_KEY: base_config.get(SPOTIFY_CLIENT_SECRET_KEY, os.environ.get(SPOTIFY_CLIENT_SECRET_KEY)),
+        SPOTIFY_REDIRECT_URI_KEY: base_config.get(SPOTIFY_REDIRECT_URI_KEY, os.environ.get(SPOTIFY_REDIRECT_URI_KEY))
     }
 
 def get_spotify_client(config):
     """
     Creates a Spotify client object using configuration values for credentials.
     """
-    client_id = config['spotify_client_id']
-    client_secret = config['spotify_client_secret']
-    redirect_uri = config['spotify_redirect_uri']
+    client_id = config[SPOTIFY_CLIENT_ID_KEY]
+    client_secret = config[SPOTIFY_CLIENT_SECRET_KEY]
+    redirect_uri = config[SPOTIFY_REDIRECT_URI_KEY]
 
     if not client_id or not client_secret or not redirect_uri:
-        raise ValueError('spotify_client_id, spotify_client_secret, and spotify_redirect_uri must be set in config.yaml.')
+        raise ValueError(f'{SPOTIFY_CLIENT_ID_KEY}, {SPOTIFY_CLIENT_SECRET_KEY}, and {SPOTIFY_REDIRECT_URI_KEY} must be set in config.yaml.')
 
     return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
 
@@ -55,9 +67,9 @@ def include_playlist(playlist, config):
     """
     Returns True if the playlist should be included in the export.
     """
-    if config['exclude_spotify_playlists'] and playlist['owner']['id'] == 'spotify':
+    if config[EXCLUDE_SPOTIFY_PLAYLISTS_KEY] and playlist['owner']['id'] == 'spotify':
         return False
-    if playlist['name'] in config['exclude_playlists']:
+    if playlist['name'] in config[EXCLUDE_PLAYLISTS_KEY]:
         return False
     return True
 
@@ -71,7 +83,7 @@ def fetch_playlists(sp, config):
     
     # Load existing playlist metadata
     existing_metadata = {}
-    metadata_path = os.path.join(config['archive_dir'], config['playlist_metadata_filename'])
+    metadata_path = os.path.join(config[ARCHIVE_DIR_KEY], config[PLAYLIST_METADATA_FILENAME_KEY])
     try:
         with open(metadata_path, 'r') as f:
             existing_metadata =  {p['id']: p for p in json.load(f)}
@@ -89,7 +101,7 @@ def fetch_playlists(sp, config):
                 if item['id'] in existing_metadata and existing_metadata[item['id']]['snapshot_id'] == item['snapshot_id']:
                     # If the playlist hasn't changed, reuse saved information
                     try:
-                        with open(os.path.join(config['playlists_dir'], item['name'].replace('/', '_') + '.json'), 'r') as f:
+                        with open(os.path.join(config[PLAYLISTS_DIR_KEY], item['name'].replace('/', '_') + '.json'), 'r') as f:
                             playlist = existing_metadata[item['id']]
                             playlist['tracks'] = json.load(f)
                     except:
@@ -154,15 +166,15 @@ def get_remote_url(config, with_token=False):
     Creates or gets GitHub repository URL if github_token and repo_name are set.
     Returns the remote URL if successful, None otherwise.
     """
-    if config['repo_name'] and config['github_token']:
+    if config[REPO_NAME_KEY] and config[GITHUB_TOKEN_KEY]:
         from github import Github
-        gh = Github(config['github_token'])
+        gh = Github(config[GITHUB_TOKEN_KEY])
         try:
-            gh.get_user().get_repo(config['repo_name'])
+            gh.get_user().get_repo(config[REPO_NAME_KEY])
         except:
-            gh.get_user().create_repo(config['repo_name'])
-        prefix = f"https://{config['github_token']}@" if with_token else "https://"
-        return f"{prefix}github.com/{gh.get_user().login}/{config['repo_name']}.git"
+            gh.get_user().create_repo(config[REPO_NAME_KEY])
+        prefix = f"https://{config[GITHUB_TOKEN_KEY]}@" if with_token else "https://"
+        return f"{prefix}github.com/{gh.get_user().login}/{config[REPO_NAME_KEY]}.git"
     return None
 
 def setup_archive(config):
@@ -175,7 +187,7 @@ def setup_archive(config):
 
     Returns the local Git repository object for further operations.
     """
-    repo = Repo.init(config['archive_dir'])
+    repo = Repo.init(config[ARCHIVE_DIR_KEY])
     with repo.config_writer() as git_config:
         git_config.set_value('user', 'name', 'Spogitify')
         git_config.set_value('user', 'email', 'spogitify@gmail.com')
@@ -188,7 +200,7 @@ def setup_archive(config):
         except exc.GitCommandError:
             pass
         
-    os.makedirs(f"{config['archive_dir']}/{config['playlists_dir']}", exist_ok=True)
+    os.makedirs(f"{config[ARCHIVE_DIR_KEY]}/{config[PLAYLISTS_DIR_KEY]}", exist_ok=True)
     if not os.path.exists(os.path.join(repo.working_dir, 'README.md')):
         with open(os.path.join(repo.working_dir, 'README.md'), 'w') as f:
             f.write('Created by Spogitify')
@@ -206,7 +218,7 @@ def write_playlists_metadata_json(playlists, config):
     Writes playlist metadata to JSON file.
     """
     yield 'Saving playlist metadata file'
-    with open(f"{config['archive_dir']}/{config['playlist_metadata_filename']}", 'w', newline='', encoding='utf-8') as jsonfile:
+    with open(f"{config[ARCHIVE_DIR_KEY]}/{config[PLAYLIST_METADATA_FILENAME_KEY]}", 'w', newline='', encoding='utf-8') as jsonfile:
         playlists_without_tracks = [{k: v for k, v in p.items() if k != 'tracks'} for p in playlists]
         json.dump(playlists_without_tracks, jsonfile, indent=2)
 
@@ -215,7 +227,7 @@ def write_playlist_tracks_json(playlists, config):
     Exports each playlist as a separate JSON file in the playlists folder.
     """
     yield 'Saving playlist files'
-    playlists_path = f"{config['archive_dir']}/{config['playlists_dir']}"
+    playlists_path = f"{config[ARCHIVE_DIR_KEY]}/{config[PLAYLISTS_DIR_KEY]}"
     
     # Remove any existing playlist files
     for filename in os.listdir(playlists_path):
@@ -239,7 +251,7 @@ def describe_changes(repo, config):
     changed_playlists = set()
     deleted_playlists = set()
     
-    prefix_length = len(config['playlists_dir'] + '/')
+    prefix_length = len(config[PLAYLISTS_DIR_KEY] + '/')
     
     def display_playlist(filename):
         # Remove prefix and any file extension
@@ -255,7 +267,7 @@ def describe_changes(repo, config):
     for (group_name, change_type, collection) in playlist_groups:
         for diff_item in diff_index.iter_change_type(change_type):
             path = diff_item.a_path
-            if re.match(f"^{config['playlists_dir']}/.*\.json$", path):
+            if re.match(f"^{config[PLAYLISTS_DIR_KEY]}/.*\.json$", path):
                 collection.add(path)
     
     change_description = "Summary of Changes:\n"

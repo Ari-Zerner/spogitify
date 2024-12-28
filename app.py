@@ -13,9 +13,9 @@ app.secret_key = os.urandom(24)
 def spotify_oauth():
     config = get_config()
     return SpotifyOAuth(
-        client_id=config['spotify_client_id'],
-        client_secret=config['spotify_client_secret'],
-        redirect_uri=config['spotify_redirect_uri'],
+        client_id=config[SPOTIFY_CLIENT_ID_KEY],
+        client_secret=config[SPOTIFY_CLIENT_SECRET_KEY],
+        redirect_uri=config[SPOTIFY_REDIRECT_URI_KEY],
         scope='user-library-read playlist-read-private',
         cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())
@@ -62,8 +62,8 @@ def export():
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
     config = get_config({
-        'archive_dir': archive_dir,
-        'repo_name': repo_name()
+        ARCHIVE_DIR_KEY: archive_dir,
+        REPO_NAME_KEY: repo_name()
     })
     host_url = request.host_url
     
@@ -81,7 +81,7 @@ def home():
         return login_redirect()
     
     user = sp.me()
-    config = get_config({'repo_name': repo_name()})
+    config = get_config({REPO_NAME_KEY: repo_name()})
     repo_url = get_remote_url(config)
     html = f"""
     <html>
