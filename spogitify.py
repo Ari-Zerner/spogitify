@@ -73,6 +73,15 @@ def include_playlist(playlist, config):
         return False
     return True
 
+def metadata_path(config):
+    return os.path.join(config[ARCHIVE_DIR_KEY], config[PLAYLIST_METADATA_FILENAME_KEY])
+
+def playlist_path(playlist, config, include_archive_dir=True):
+    path = os.path.join(config[PLAYLISTS_DIR_KEY], playlist['name'].replace('/', '_') + '.json')
+    if include_archive_dir:
+        path = os.path.join(config[ARCHIVE_DIR_KEY], path)
+    return path
+
 def fetch_playlists(sp, config):
     """
     Fetches all playlists for the authenticated user, including track details.
@@ -83,9 +92,8 @@ def fetch_playlists(sp, config):
     
     # Load existing playlist metadata
     existing_metadata = {}
-    metadata_path = os.path.join(config[ARCHIVE_DIR_KEY], config[PLAYLIST_METADATA_FILENAME_KEY])
     try:
-        with open(metadata_path, 'r') as f:
+        with open(metadata_path(config), 'r') as f:
             existing_metadata =  {p['id']: p for p in json.load(f)}
     except:
         pass  # If metadata file is invalid, proceed as if it doesn't exist
@@ -101,7 +109,7 @@ def fetch_playlists(sp, config):
                 if item['id'] in existing_metadata and existing_metadata[item['id']]['snapshot_id'] == item['snapshot_id']:
                     # If the playlist hasn't changed, reuse saved information
                     try:
-                        with open(os.path.join(config[PLAYLISTS_DIR_KEY], item['name'].replace('/', '_') + '.json'), 'r') as f:
+                        with open(playlist_path(item, config), 'r') as f:
                             playlist = existing_metadata[item['id']]
                             playlist['tracks'] = json.load(f)
                     except:
@@ -218,7 +226,7 @@ def write_playlists_metadata_json(playlists, config):
     Writes playlist metadata to JSON file.
     """
     yield 'Saving playlist metadata file'
-    with open(f"{config[ARCHIVE_DIR_KEY]}/{config[PLAYLIST_METADATA_FILENAME_KEY]}", 'w', newline='', encoding='utf-8') as jsonfile:
+    with open(metadata_path(config), 'w', newline='', encoding='utf-8') as jsonfile:
         playlists_without_tracks = [{k: v for k, v in p.items() if k != 'tracks'} for p in playlists]
         json.dump(playlists_without_tracks, jsonfile, indent=2)
 
@@ -236,80 +244,110 @@ def write_playlist_tracks_json(playlists, config):
             os.remove(file_path)
     
     for playlist in playlists:
-        playlist_name = playlist['name'].replace('/', '_')
-        filename = f'{playlists_path}/{playlist_name}.json'
-
-        with open(filename, 'w', newline='', encoding='utf-8') as jsonfile:
+        with open(playlist_path(playlist, config), 'w', newline='', encoding='utf-8') as jsonfile:
             json.dump(playlist['tracks'], jsonfile, indent=2)
 
 def describe_changes(repo, config):
     """
-    Returns a human-readable description of the changes made since the last commit.
+    Returns a human-readable description of the changes made since the last commit
+    by comparing current and previous playlist metadata and tracks.
     """
-    diff_index = repo.head.commit.diff(None)  # Compare last commit to working directory
-    added_playlists = set()
-    changed_playlists = set()
-    deleted_playlists = set()
-    
-    prefix_length = len(config[PLAYLISTS_DIR_KEY] + '/')
-    
-    def display_playlist(filename):
-        # Remove prefix and any file extension
-        return filename.rsplit('.', 1)[0][prefix_length:]
-    
     def display_track(track):
-        return f"{track[0]} by {track[1]}"
+        """
+        Returns a string representation of a track. Accepts a track object with 'name' and 'artist' keys or a tuple of (name, artist).
+        """
+        if isinstance(track, dict):
+            return f"{track['name']} by {track['artist']}"
+        elif isinstance(track, tuple):
+            return f"{track[0]} by {track[1]}"
+        else:
+            raise ValueError(f"Invalid track object: {track}")
     
-    playlist_groups = [('Added', 'A', added_playlists),
-                       ('Changed', 'M', changed_playlists),
-                       ('Deleted', 'D', deleted_playlists)]
+    # Load current metadata
+    with open(metadata_path(config), 'r') as f:
+        current_metadata = {p['id']: p for p in json.load(f)}
     
-    for (group_name, change_type, collection) in playlist_groups:
-        for diff_item in diff_index.iter_change_type(change_type):
-            path = diff_item.a_path
-            if re.match(f"^{config[PLAYLISTS_DIR_KEY]}/.*\.json$", path):
-                collection.add(path)
+    # Load previous metadata
+    previous_metadata = {}
+    try:
+        content = repo.git.show(f'HEAD:{config[PLAYLIST_METADATA_FILENAME_KEY]}')
+        previous_metadata = {p['id']: p for p in json.loads(content)}
+    except Exception as e:
+        # If no previous commit, treat as empty
+        pass
     
     change_description = "Summary of Changes:\n"
-    for (group_name, change_type, collection) in playlist_groups:
-        if collection:
-            change_description += f"  {group_name} playlists:\n"
-            for playlist in collection:
-                change_description += f"    - {display_playlist(playlist)}\n"
-        
-    change_description += "\n"
     
-    for playlist in added_playlists:
-        change_description += f"Added playlist: {display_playlist(playlist)}\n"
-        try:
-            with open(os.path.join(repo.working_dir, playlist), 'r') as file:
-                tracks = json.load(file)
-            change_description += "  Tracks:\n"
+    # Find added playlists
+    added = set(current_metadata.keys()) - set(previous_metadata.keys())
+    removed = set(previous_metadata.keys()) - set(current_metadata.keys())
+    
+    # Find changed playlists
+    changed = set()
+    for playlist_id in set(current_metadata.keys()) & set(previous_metadata.keys()):
+        if current_metadata[playlist_id]['snapshot_id'] != previous_metadata[playlist_id]['snapshot_id']:
+            changed.add(playlist_id)
+    
+    if added:
+        change_description += "  Added playlists:\n"
+        for playlist_id in added:
+            playlist = current_metadata[playlist_id]
+            change_description += f"  + {playlist['name']}\n"
+            
+    if removed:
+        change_description += "\n  Removed playlists:\n"
+        for playlist_id in removed:
+            playlist = previous_metadata[playlist_id]
+            change_description += f"  - {playlist['name']}\n"
+            
+    if changed:
+        change_description += "\n  Changed playlists:\n"
+        for playlist_id in changed:
+            playlist = current_metadata[playlist_id]
+            change_description += f"  ~ {playlist['name']}\n"
+            
+    # Then show track details for added playlists
+    if added:
+        change_description += "\n  Tracks in added playlists:\n"
+        for playlist_id in added:
+            playlist = current_metadata[playlist_id]
+            change_description += f"    {playlist['name']}:\n"
+            # Load tracks for added playlist
+            with open(playlist_path(playlist, config), 'r') as f:
+                tracks = json.load(f)
             for track in tracks:
-                change_description += f"    - {display_track(track)}\n"
-        except Exception as e:
-            change_description += f"Error describing added playlist {display_playlist(playlist)}: {str(e)}\n"
-    
-    for playlist in changed_playlists:
-        change_description += f"Changed playlist: {display_playlist(playlist)}\n"
-        try:
-            with open(os.path.join(repo.working_dir, playlist), 'r') as file:
-                current_tracks = set((track['name'], track['artist']) for track in json.load(file))
-                previous_tracks = set((track['name'], track['artist']) for track in json.loads(repo.git.show(f'HEAD~1:{playlist}')))
+                change_description += f"    + {display_track(track)}\n"
+                
+    # Then show track changes for modified playlists
+    if changed:
+        change_description += "\n  Track changes in modified playlists:\n"
+        for playlist_id in changed:
+            playlist = current_metadata[playlist_id]
+            change_description += f"    {playlist['name']}:\n"
+            
+            # Load current tracks
+            with open(playlist_path(playlist, config), 'r') as f:
+                current_tracks = set((t['name'], t['artist']) for t in json.load(f))
+            
+            # Load previous tracks
+            try:
+                previous_path = playlist_path(previous_metadata[playlist_id], config, include_archive_dir=False)
+                content = repo.git.show(f'HEAD:{previous_path}')
+                previous_tracks = set((t['name'], t['artist']) for t in json.loads(content))
+            except:
+                previous_tracks = set()
             
             added_tracks = current_tracks - previous_tracks
             removed_tracks = previous_tracks - current_tracks
             
             if added_tracks:
-                change_description += "  Added tracks:\n"
+                change_description += "      Added tracks:\n"
                 for track in added_tracks:
-                    change_description += f"    - {display_track(track)}\n"
+                    change_description += f"      + {display_track({'name': track[0], 'artist': track[1]})}\n"
             if removed_tracks:
-                change_description += "  Removed tracks:\n"
+                change_description += "      Removed tracks:\n"
                 for track in removed_tracks:
-                    change_description += f"    - {display_track(track)}\n"
-        except Exception as e:
-            change_description += f"Error describing changes for {display_playlist(playlist)}: {str(e)}\n"
+                    change_description += f"      - {display_track({'name': track[0], 'artist': track[1]})}\n"
     
     return change_description
 
