@@ -1,99 +1,77 @@
 # Spogitify
 
-Spogitify is a Python script that allows you to backup your Spotify playlists to a local Git repository. It fetches all your playlists (excluding those owned by Spotify), exports each playlist as a separate CSV file, and creates a metadata file with information about each playlist. The script then commits the changes to a Git repository, allowing you to track the history of your playlist backups.
+Back up your Spotify playlists to Git with version control. Track how your music tastes evolve over time.
 
-## Prerequisites
+## About
 
-Before running Spogitify, make sure you have the following:
+Spogitify is a web service that automatically backs up your Spotify playlists to GitHub. Each backup creates a snapshot of your playlists, allowing you to:
 
-- Python 3.x installed on your system
-- The following Python libraries installed:
-  - `spotipy`
-  - `gitpython`
-  - `pyyaml`
-
-You can install the required libraries using pip:
-
-```
-pip install spotipy gitpython pyyaml
-```
-
-## Setup
-
-1. Clone the Spogitify repository.
-
-2. Set up your Spotify app credentials:
-   - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and create a new app.
-   - Note down the Client ID and Client Secret for your app.
-   - Set the Redirect URI to `http://localhost:8888/callback` in your app settings.
-
-3. Copy `example-config.yaml` to `config.yaml` and modify `config.yaml` with your Spotify credentials.
-
-4. (optional) To back up your Spotify archive to GitHub:
-   - Create a [GitHub personal access token](https://github.com/settings/tokens)
-   - Add the token to `config.yaml` as `github_token` or set it in the GITHUB_TOKEN environment variable
-   - Set `remote_name` in `config.yaml` to the desired repository name (it will be created if it doesn't exist)
-
-5. (optional) Modify `config.yaml` with any other desired configuration (see [Configuration](#configuration)).
+- Track how playlists change over time
+- See when songs were added or removed
+- Keep a permanent record of your music collection
 
 ## Usage
 
-### Run Once
-1. Open a terminal or command prompt and navigate to the directory where the Spogitify script is located.
+1. Visit [Spogitify](https://spogitify-65ba8394f115.herokuapp.com/) or [run locally](#development).
+2. Log in with your Spotify account
+   NOTE: Spogitify is currently in beta, and users must be allowlisted. [Contact](https://arizerner.com/contact) me for access.
+3. Click "Start Backup" to create your first archive
+4. View your playlist history on GitHub
 
-2. Run the script using the following command:
-   ```
-   python3 spogitify.py
-   ```
+## How It Works
 
-3. The script will start running and perform the following steps:
-   - Authenticate with the Spotify API using your app credentials.
-   - Fetch all your playlists (except for configured exclusions).
-   - Export each playlist as a separate CSV file in a folder in the archive directory.
-   - Create a metadata file in the archive directory, containing information about each playlist.
-   - Commit the changes to a Git repository in the archive directory.
-   - Push changes to the remote repository if configured.
+1. Authenticates with Spotify OAuth
+2. Fetches all your playlists
+3. Exports each playlist to JSON:
+   - `playlists_metadata.json`: Overview of all playlists
+   - `playlists/*.json`: Individual playlist data
+4. Commits changes to a GitHub repository
 
-4. Once the script finishes running, you will have a Git repository in the archive directory with your playlist backups and metadata.
+## Privacy & Security
 
-### Run Daily
+- All backups are stored in public GitHub repositories
+- Only playlist data is stored (no personal Spotify data)
+- Spotify login uses official OAuth - we never see your password
+- GitHub repositories are created under Spogitify's account
 
-To automatically run Spogitify daily:
+## Development
 
-1. In the project directory, make `setup_cron.sh` executable:
+This is an open source project. To run locally:
+
+1. Install dependencies:
 ```
-chmod +x setup_cron.sh
+pip install -r requirements.txt
 ```
 
-2. Run the setup script:
+2. Create a Spotify app:
+   1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   2. Click "Create app"
+   3. Fill in the app details:
+      - App name: Choose any name (e.g. "Spogitify Local")
+      - Redirect URI: `http://localhost:5000/authorize`
+      - Web API: Selected
+   4. Click "Save"
+   5. Note your Client ID and Client Secret
+
+3. Create a GitHub token:
+   1. Go to [GitHub Settings > Developer Settings > Personal Access Tokens > Tokens (classic)](https://github.com/settings/tokens)
+   2. Click "Generate new token (classic)"
+   3. Fill in the token details:
+      - Note: Choose any name (e.g. "Spogitify Local")
+      - Expiration: Choose an appropriate duration
+      - Scopes: Select `repo` (Full control of private repositories)
+   4. Click "Generate token"
+   5. Note your token - you won't be able to see it again
+
+4. Set up environment variables:
 ```
-./setup_cron.sh
+export SPOTIFY_CLIENT_ID=your_client_id
+export SPOTIFY_CLIENT_SECRET=your_client_secret
+export SPOTIFY_REDIRECT_URI='http://localhost:5000/authorize'
+export GITHUB_TOKEN=your_github_token
 ```
 
-This will set up a daily cron job to run spogitify.py at midnight.
-
-To modify the cron schedule, edit the `cron_schedule` variable in `setup_cron.sh` before running the script.
-
-If you encounter issues, check the system or cron logs, or run `crontab -l` to verify the cron job is scheduled correctly.
-
-## Configuration
-
-Spogitify uses a YAML configuration file named `config.yaml` to store the following settings:
-
-- `spotify_client_id`: Your Spotify app's Client ID (required).
-- `spotify_client_secret`: Your Spotify app's Client Secret (required).
-- `archive_dir`: The directory where the playlist backups and metadata will be stored (default: `spotify-archive`).
-- `playlists_dir`: The subdirectory within `archive_dir` where the individual playlist CSV files will be stored (default: `playlists`).
-- `playlist_metadata_filename`: The name of the CSV file that will contain the playlist metadata (default: `playlists_metadata.csv`).
-- `remote_name`: Name of GitHub repository to create/use (default: `None`). Requires github_token.
-- `github_token`: GitHub personal access token. Can also be set in GITHUB_TOKEN environment variable.
-- `exclude_spotify_playlists`: Whether to exclude Spotify-generated playlists from the archive (default: `yes`).
-- `exclude_playlists`: A list of specific playlists to exclude from the archive (default: `[]`).
-
-## Note
-
-- Running the script will create a new commit in the Git repository each time, allowing you to track the history of your playlist backups.
-
-- Make sure to keep your Spotify app credentials secure and do not share them with others.
-
-- The script requires an active internet connection to communicate with the Spotify API.
+1. Run the development server:
+```
+python app.py
+```

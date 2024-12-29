@@ -50,19 +50,6 @@ def get_config(base_config={}):
         SPOTIFY_REDIRECT_URI_KEY: base_config.get(SPOTIFY_REDIRECT_URI_KEY, os.environ.get(SPOTIFY_REDIRECT_URI_KEY))
     }
 
-def get_spotify_client(config):
-    """
-    Creates a Spotify client object using configuration values for credentials.
-    """
-    client_id = config[SPOTIFY_CLIENT_ID_KEY]
-    client_secret = config[SPOTIFY_CLIENT_SECRET_KEY]
-    redirect_uri = config[SPOTIFY_REDIRECT_URI_KEY]
-
-    if not client_id or not client_secret or not redirect_uri:
-        raise ValueError(f'{SPOTIFY_CLIENT_ID_KEY}, {SPOTIFY_CLIENT_SECRET_KEY}, and {SPOTIFY_REDIRECT_URI_KEY} must be set in config.yaml.')
-
-    return spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, scope='user-library-read playlist-read-private'))
-
 def include_playlist(playlist, config):
     """
     Returns True if the playlist should be included in the export.
@@ -401,16 +388,3 @@ def run_export(sp, config):
     except Exception as e:
         yield f"Error: {str(e)}"
         raise e
-
-def load_config_file():
-    with open('config.yaml', 'r') as file:
-        return yaml.safe_load(file)
-
-def main():
-    config = get_config(load_config_file())
-    sp = get_spotify_client(config)
-    for status in run_export(sp, config):
-        print(status)
-
-if __name__ == '__main__':
-    main()
