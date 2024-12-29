@@ -49,9 +49,6 @@ def authorize():
         return redirect(session.pop('previous_page', '/'))
     return {"error": "Failed to get access token"}, 400
 
-def repo_name():
-    return f"spotify-archive-{session['user_id']}"
-
 @app.route('/export', methods=['GET'])
 def export():
     sp = spotify()
@@ -61,11 +58,7 @@ def export():
     # Create temporary directory for this export
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
-    config = get_config({
-        ARCHIVE_DIR_KEY: archive_dir,
-        REPO_NAME_KEY: repo_name()
-    })
-    host_url = request.host_url
+    config = get_config(archive_dir=archive_dir, user_id=session['user_id'])
     
     # Return initial response with progress indicator
     def generate():
@@ -81,8 +74,9 @@ def home():
         return login_redirect()
     
     user = sp.me()
-    config = get_config({REPO_NAME_KEY: repo_name()})
+    config = get_config(user_id=session['user_id'])
     repo_url = get_remote_url(config)
+        
     html = f"""
     <html>
     <head><title>Spogitify - Spotify Playlist Backup</title></head>

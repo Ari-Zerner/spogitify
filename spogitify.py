@@ -22,32 +22,25 @@ SPOTIFY_CLIENT_ID_KEY = 'SPOTIFY_CLIENT_ID'
 SPOTIFY_CLIENT_SECRET_KEY = 'SPOTIFY_CLIENT_SECRET'
 SPOTIFY_REDIRECT_URI_KEY = 'SPOTIFY_REDIRECT_URI'
 
-def get_config(base_config={}):
+def get_config(archive_dir=None, user_id=None):
     """
-    Merges base configuration with default values and returns a dictionary with configuration values.
-
-    This function takes a base configuration dictionary (typically loaded from config.yaml) and
-    merges it with default values for all configuration options. Environment variables are used
-    as fallbacks for sensitive values like API credentials.
-
-    Args:
-        base_config (dict): Base configuration dictionary, defaults to empty dict if not provided
+    Returns a dictionary with configuration values.
 
     Returns:
         dict: Complete configuration dictionary with all required keys
     """
-    # Get configuration values with default fallbacks
+    # TODO: store user-specific config in MongoDB
     return {
-        ARCHIVE_DIR_KEY: os.path.expanduser(base_config.get(ARCHIVE_DIR_KEY, 'spotify-archive')),
-        PLAYLISTS_DIR_KEY: base_config.get(PLAYLISTS_DIR_KEY, 'playlists'),
-        PLAYLIST_METADATA_FILENAME_KEY: base_config.get(PLAYLIST_METADATA_FILENAME_KEY, 'playlists_metadata.json'),
-        EXCLUDE_SPOTIFY_PLAYLISTS_KEY: base_config.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY, True),
-        EXCLUDE_PLAYLISTS_KEY: base_config.get(EXCLUDE_PLAYLISTS_KEY, []),
-        REPO_NAME_KEY: base_config.get(REPO_NAME_KEY, None),
-        GITHUB_TOKEN_KEY: base_config.get(GITHUB_TOKEN_KEY, os.environ.get(GITHUB_TOKEN_KEY)),
-        SPOTIFY_CLIENT_ID_KEY: base_config.get(SPOTIFY_CLIENT_ID_KEY, os.environ.get(SPOTIFY_CLIENT_ID_KEY)),
-        SPOTIFY_CLIENT_SECRET_KEY: base_config.get(SPOTIFY_CLIENT_SECRET_KEY, os.environ.get(SPOTIFY_CLIENT_SECRET_KEY)),
-        SPOTIFY_REDIRECT_URI_KEY: base_config.get(SPOTIFY_REDIRECT_URI_KEY, os.environ.get(SPOTIFY_REDIRECT_URI_KEY))
+        ARCHIVE_DIR_KEY: archive_dir,
+        PLAYLISTS_DIR_KEY: 'playlists',
+        PLAYLIST_METADATA_FILENAME_KEY: 'playlists_metadata.json',
+        EXCLUDE_SPOTIFY_PLAYLISTS_KEY: True,
+        EXCLUDE_PLAYLISTS_KEY: [],
+        REPO_NAME_KEY: f"spotify-archive-{user_id}" if user_id else None,
+        GITHUB_TOKEN_KEY: os.environ.get(GITHUB_TOKEN_KEY),
+        SPOTIFY_CLIENT_ID_KEY: os.environ.get(SPOTIFY_CLIENT_ID_KEY),
+        SPOTIFY_CLIENT_SECRET_KEY: os.environ.get(SPOTIFY_CLIENT_SECRET_KEY),
+        SPOTIFY_REDIRECT_URI_KEY: os.environ.get(SPOTIFY_REDIRECT_URI_KEY),
     }
 
 def include_playlist(playlist, config):
@@ -355,7 +348,7 @@ def commit_and_push_changes(repo, config):
             repo.git.push(remote_url, f"{DEFAULT_BRANCH}:{DEFAULT_BRANCH}")
     else:
         yield 'No changes to commit'
-            
+
 def run_export(sp, config):
     """
     Executes the main export process for Spotify playlists.
