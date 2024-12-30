@@ -5,20 +5,21 @@ from helpers import files
 
 REMOTE_NAME = 'origin'
 DEFAULT_BRANCH = 'main'
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 def get_remote_url(config, with_token=False):
     """
     Creates or gets GitHub repository URL if github_token and repo_name are set.
     Returns the remote URL if successful, None otherwise.
     """
-    if config[REPO_NAME_KEY] and config[GITHUB_TOKEN_KEY]:
+    if config[REPO_NAME_KEY] and GITHUB_TOKEN:
         from github import Github
-        gh = Github(config[GITHUB_TOKEN_KEY])
+        gh = Github(GITHUB_TOKEN)
         try:
             gh.get_user().get_repo(config[REPO_NAME_KEY])
         except:
             gh.get_user().create_repo(config[REPO_NAME_KEY])
-        prefix = f"https://{config[GITHUB_TOKEN_KEY]}@" if with_token else "https://"
+        prefix = f"https://{GITHUB_TOKEN}@" if with_token else "https://"
         return f"{prefix}github.com/{gh.get_user().login}/{config[REPO_NAME_KEY]}.git"
     return None
 

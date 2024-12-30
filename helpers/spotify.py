@@ -5,11 +5,15 @@ import uuid
 from helpers.config import *
 from helpers import files, formatting
 
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI')
+
 def spotify_oauth():
     return SpotifyOAuth(
-        client_id=global_config[SPOTIFY_CLIENT_ID_KEY],
-        client_secret=global_config[SPOTIFY_CLIENT_SECRET_KEY],
-        redirect_uri=global_config[SPOTIFY_REDIRECT_URI_KEY],
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET,
+        redirect_uri=SPOTIFY_REDIRECT_URI,
         scope='user-library-read playlist-read-private',
         cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
         state=str(uuid.uuid4())
