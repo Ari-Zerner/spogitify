@@ -105,6 +105,7 @@ def home():
             </div>
         </div>
         <p>Spogitify backs up your Spotify playlists to a Git repository, allowing you to track how your playlists change over time.</p>
+        <p>NOTE: Spogitify is currently in beta, and users must be allowlisted. <a href="https://arizerner.com/contact" target="_blank">Contact</a> Ari Zerner for access.</p>
         <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
         </div>
