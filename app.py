@@ -1,37 +1,50 @@
 import tempfile
 from flask import Flask, request, redirect, session, Response
-from spogitify import *
-from spotipy.oauth2 import SpotifyOAuth
-from spotipy import Spotify
-import uuid
+from helpers.config import *
+from helpers import spotify, git, files, formatting
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Helper functions
 
-def spotify_oauth():
-    config = get_config()
-    return SpotifyOAuth(
-        client_id=config[SPOTIFY_CLIENT_ID_KEY],
-        client_secret=config[SPOTIFY_CLIENT_SECRET_KEY],
-        redirect_uri=config[SPOTIFY_REDIRECT_URI_KEY],
-        scope='user-library-read playlist-read-private',
-        cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session),
-        state=str(uuid.uuid4())
-    )
-
-def spotify():
-    sp_oauth = spotify_oauth()
-    if not sp_oauth.validate_token(sp_oauth.get_cached_token()):
-        return None
-    auth_token = sp_oauth.get_cached_token()['access_token']
-    return Spotify(auth=auth_token)
-
 def login_redirect():
     session['previous_page'] = request.url
-    auth_url = spotify_oauth().get_authorize_url()
+    auth_url = spotify.spotify_oauth().get_authorize_url()
     return redirect(auth_url)
+
+def run_export(sp, config):
+    """
+    Executes the main export process for Spotify playlists.
+
+    This function performs the following steps:
+    1. Fetches all playlists from the user's Spotify account.
+    2. Sets up the archive directory and initializes/updates the Git repository.
+    3. Writes metadata for all playlists to a JSON file.
+    4. Writes individual JSON files for each playlist's tracks.
+    5. Commits all changes to the Git repository.
+    6. Pushes changes to the remote repository if configured.
+
+    Args:
+        sp (spotipy.Spotify): An authenticated Spotify client object.
+        config (dict): A dictionary containing configuration settings.
+
+    Note:
+        This function may take a while to complete, especially for users with many playlists.
+        
+    Returns:
+        A generator of status messages.
+    """
+    try:
+        repo = git.setup_archive(config)
+        playlists = yield from spotify.fetch_playlists(sp, config)
+        yield from files.write_playlists_metadata_json(playlists, config)
+        yield from files.write_playlist_tracks_json(playlists, config)
+        commit_message = formatting.commit_message(repo, config)
+        yield from git.commit_and_push_changes(repo, config, commit_message)
+    except Exception as e:
+        yield f"Error: {str(e)}"
+        raise e
 
 # Routes
 
@@ -41,8 +54,9 @@ def health_check():
 
 @app.route('/authorize')
 def authorize():
-    spotify_oauth().get_access_token(request.args['code'])
-    sp = spotify()
+    sp_oauth = spotify.spotify_oauth()
+    sp_oauth.get_access_token(request.args['code'])
+    sp = spotify.spotify_client(sp_oauth)
     if sp:
         user_info = sp.me()
         session['user_id'] = user_info['id']
@@ -51,14 +65,17 @@ def authorize():
 
 @app.route('/export', methods=['GET'])
 def export():
-    sp = spotify()
+    sp = spotify.spotify_client()
     if not sp:
         return login_redirect()
         
     # Create temporary directory for this export
     export_dir = tempfile.mkdtemp()
     archive_dir = os.path.join(export_dir, 'spotify-archive')
-    config = get_config(archive_dir=archive_dir, user_id=session['user_id'])
+    config = {
+        **config_for_user(session['user_id']),
+        ARCHIVE_DIR_KEY: archive_dir
+    }
     
     # Return initial response with progress indicator
     def generate():
@@ -69,13 +86,13 @@ def export():
 
 @app.route('/')
 def home():
-    sp = spotify()
+    sp = spotify.spotify_client()
     if not sp:
         return login_redirect()
     
     user = sp.me()
-    config = get_config(user_id=session['user_id'])
-    repo_url = get_remote_url(config)
+    config = config_for_user(session['user_id'])
+    repo_url = git.get_remote_url(config)
         
     html = f"""
     <html>

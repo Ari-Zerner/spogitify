@@ -73,5 +73,5 @@ export GITHUB_TOKEN=your_github_token
 
 1. Run the development server:
 ```
-python app.py
+python src/app.py
 ```
