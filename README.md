@@ -14,7 +14,7 @@ Spogitify is a web service that automatically backs up your Spotify playlists to
 
 1. Visit [Spogitify](https://spogitify-65ba8394f115.herokuapp.com/) or [run locally](#development).
 2. Log in with your Spotify account
-   NOTE: Spogitify is currently in beta, and users must be allowlisted. [Contact](https://arizerner.com/contact) me for access.
+   - NOTE: Spogitify is currently in beta, and users must be allowlisted. [Contact](https://arizerner.com/contact) me for access.
 3. Click "Start Backup" to create your first archive
 4. View your playlist history on GitHub
 
@@ -52,6 +52,12 @@ pip install -r requirements.txt
       - Web API: Selected
    4. Click "Save"
    5. Note your Client ID and Client Secret
+   6. Add to environment variables:
+   ```
+   export SPOTIFY_CLIENT_ID=your_client_id
+   export SPOTIFY_CLIENT_SECRET=your_client_secret
+   export SPOTIFY_REDIRECT_URI='http://localhost:5000/authorize'
+   ```
 
 3. Create a GitHub token:
    1. Go to [GitHub Settings > Developer Settings > Personal Access Tokens > Tokens (classic)](https://github.com/settings/tokens)
@@ -62,16 +68,22 @@ pip install -r requirements.txt
       - Scopes: Select `repo` (Full control of private repositories)
    4. Click "Generate token"
    5. Note your token - you won't be able to see it again
+   6. Add to environment variables:
+   ```
+   export GITHUB_TOKEN=your_github_token
+   ```
 
-4. Set up environment variables:
-```
-export SPOTIFY_CLIENT_ID=your_client_id
-export SPOTIFY_CLIENT_SECRET=your_client_secret
-export SPOTIFY_REDIRECT_URI='http://localhost:5000/authorize'
-export GITHUB_TOKEN=your_github_token
-```
+4. Set up MongoDB:
+   1. Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   2. Create a new cluster
+   3. Click "Connect" and select "Connect your application"
+   4. Copy your connection string
+   5. Add to environment variables:
+   ```
+   export MONGODB_URI='your_connection_string'
+   ```
 
-1. Run the development server:
+5. Run the development server:
 ```
-python src/app.py
+python app.py
 ```
