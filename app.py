@@ -8,8 +8,8 @@ app.secret_key = os.urandom(24)
 
 # Helper functions
 
-def login_redirect():
-    session['previous_page'] = request.url
+def login_redirect(redirect_url=None):
+    session['previous_page'] = redirect_url or request.url
     auth_url = spotify.spotify_oauth().get_authorize_url()
     return redirect(auth_url)
 
@@ -51,6 +51,10 @@ def run_export(sp, config):
 @app.route('/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
+
+@app.route('/login')
+def login():
+    return login_redirect('/')
 
 @app.route('/authorize')
 def authorize():
@@ -100,32 +104,48 @@ def last_backup():
 @app.route('/')
 def home():
     sp = spotify.spotify_client()
-    if not sp:
-        return login_redirect()
     
-    user = sp.me()
-    config = config_for_user(session['user_id'])
-    repo_url = git.get_remote_url(config)
-    last_export = database.get_user_last_export(session['user_id'])
-    last_export_text = time.format_time_since(last_export) if last_export else "Never"
-        
+    # Common button style
+    button_style = 'background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;'
+    
+    # Common HTML header and description
     html = f"""
     <html>
     <head><title>Spogitify - Spotify Playlist Backup</title></head>
     <body style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h1>Spogitify</h1>
-            <div>
-                Logged in with Spotify as {user['display_name']}
-            </div>
+            {f'<div>Logged in with Spotify as {sp.me()["display_name"]}</div>' if sp else ''}
         </div>
         <p>Spogitify backs up your Spotify playlists to a Git repository, allowing you to track how your playlists change over time.</p>
         <p>NOTE: Spogitify is currently in beta, and users must be allowlisted. <a href="https://arizerner.com/contact" target="_blank">Contact</a> Ari Zerner for access.</p>
+    """
+    
+    if not sp:
+        # Login button for logged-out users
+        html += f"""
+            <form action="/login" method="get">
+                <button type="submit" style="{button_style}">
+                    Login with Spotify
+                </button>
+            </form>
+        </body>
+        </html>
+        """
+        return html
+    
+    # Additional content for logged-in users
+    config = config_for_user(session['user_id'])
+    repo_url = git.get_remote_url(config)
+    last_export = database.get_user_last_export(session['user_id'])
+    last_export_text = time.format_time_since(last_export) if last_export else "Never"
+    
+    html += f"""
         <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
         </div>
         <form action="/export" method="get" target="_blank" onsubmit="setTimeout(updateLastBackupTime, 1000)">
-            <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
+            <button type="submit" style="{button_style}">
                 Start Backup
             </button>
         </form>
@@ -141,10 +161,10 @@ def home():
                     }});
             }}
             // Update every 5 minutes
-            setInterval(updateLastBackupTime, 5 * 60 * 1000);
+            setInterval(updateLastBackupTime, 60 * 1000);
         </script>
         {f'''<form action="{repo_url}" method="get" target="_blank">
-            <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
+            <button type="submit" style="{button_style}">
                 View on GitHub
             </button>
         </form>''' if repo_url else ''}
