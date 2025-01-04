@@ -235,8 +235,6 @@ def home():
                         document.getElementById('last-backup-time').textContent = data.last_backup || 'Never';
                     }});
             }}
-            // Update every 5 minutes
-            setInterval(updateLastBackupTime, 60 * 1000);
         </script>
         {f'''<form action="{repo_url}" method="get" target="_blank" style="margin-bottom: 10px;">
             <button type="submit" style="{button_style}">
