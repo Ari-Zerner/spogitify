@@ -32,7 +32,7 @@ def describe_changes(repo, config):
     by comparing current and previous playlist metadata and tracks.
     """
     previous_metadata = git.read_head_playlists_metadata_json(repo, config) or {}
-    current_metadata = files.read_playlists_metadata_json(config) or {}
+    current_metadata = files.read_playlists_metadata(config) or {}
     
     change_description = "Summary of Changes:\n"
     
@@ -71,7 +71,7 @@ def describe_changes(repo, config):
             playlist = current_metadata[playlist_id]
             change_description += f"    {playlist['name']}:\n"
             # Load tracks for added playlist
-            tracks = files.read_playlist_tracks_json(playlist, config)
+            tracks = files.read_playlist_tracks(playlist, config)
             for track in tracks:
                 change_description += f"    + {track_string(track)}\n"
                 
@@ -83,7 +83,7 @@ def describe_changes(repo, config):
             change_description += f"    {playlist['name']}:\n"
             
             # Load current tracks
-            current_tracks = set((t['name'], t['artist']) for t in files.read_playlist_tracks_json(playlist, config))
+            current_tracks = set((t['name'], t['artist']) for t in files.read_playlist_tracks(playlist, config))
             
             # Load previous tracks
             previous_tracks = set((t['name'], t['artist']) for t in (git.read_head_playlist_tracks_json(playlist, repo, config) or []))

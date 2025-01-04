@@ -46,7 +46,7 @@ def fetch_playlists(sp, config):
     seen_playlist_ids = set()
     
     # Load existing playlist metadata
-    playlists_metadata = files.read_playlists_metadata_json(config) or {}
+    playlists_metadata = files.read_playlists_metadata(config) or {}
     
     results = sp.current_user_playlists()
     while results:
@@ -56,7 +56,7 @@ def fetch_playlists(sp, config):
                     # If the playlist hasn't changed, reuse saved information
                     yield f"Unchanged playlist: {item['name']}"
                     playlist = playlists_metadata[item['id']]
-                    playlist['tracks'] = files.read_playlist_tracks_json(playlist, config)
+                    playlist['tracks'] = files.read_playlist_tracks(playlist, config)
                 else:
                     yield f"Fetching playlist: {item['name']}"
                     playlist = {

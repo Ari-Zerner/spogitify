@@ -21,7 +21,7 @@ def setup_archive_dir(config):
         return True
     return False
 
-def write_playlists_metadata_json(playlists, config):
+def write_playlists_metadata(playlists, config):
     """
     Writes playlist metadata to JSON file.
     """
@@ -30,14 +30,14 @@ def write_playlists_metadata_json(playlists, config):
         playlists_without_tracks = [{k: v for k, v in p.items() if k != 'tracks'} for p in playlists]
         json.dump(playlists_without_tracks, jsonfile, indent=2)
 
-def read_playlists_metadata_json(config):
+def read_playlists_metadata(config):
     try:
         with open(os.path.join(config[ARCHIVE_DIR_KEY], PLAYLIST_METADATA_FILENAME), 'r', newline='', encoding='utf-8') as jsonfile:
             return {p['id']: p for p in json.load(jsonfile)}
     except Exception as e:
         return None
 
-def write_playlist_tracks_json(playlists, config):
+def write_playlist_tracks(playlists, config):
     """
     Exports each playlist as a separate JSON file in the playlists folder.
     """
@@ -54,7 +54,7 @@ def write_playlist_tracks_json(playlists, config):
         with open(os.path.join(playlists_path, playlist_filename(playlist)), 'w', newline='', encoding='utf-8') as jsonfile:
             json.dump(playlist['tracks'], jsonfile, indent=2)
 
-def read_playlist_tracks_json(playlist, config):
+def read_playlist_tracks(playlist, config):
     try:
         with open(os.path.join(config[ARCHIVE_DIR_KEY], PLAYLISTS_DIR, playlist_filename(playlist)), 'r', newline='', encoding='utf-8') as jsonfile:
             return json.load(jsonfile)

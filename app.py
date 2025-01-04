@@ -38,8 +38,8 @@ def run_export(sp, config):
     try:
         repo = git.setup_archive(config)
         playlists = yield from spotify.fetch_playlists(sp, config)
-        yield from files.write_playlists_metadata_json(playlists, config)
-        yield from files.write_playlist_tracks_json(playlists, config)
+        yield from files.write_playlists_metadata(playlists, config)
+        yield from files.write_playlist_tracks(playlists, config)
         commit_message = formatting.commit_message(repo, config)
         yield from git.commit_and_push_changes(repo, config, commit_message)
     except Exception as e:
