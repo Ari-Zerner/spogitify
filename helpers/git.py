@@ -47,7 +47,7 @@ def setup_archive(config):
             pass
         
     if files.setup_archive_dir(config):
-        repo.index.add([config[PLAYLIST_METADATA_FILENAME_KEY]])
+        repo.index.add([files.PLAYLIST_METADATA_FILENAME])
         repo.index.commit('Initial commit')
         
     if DEFAULT_BRANCH not in repo.heads:
@@ -74,7 +74,7 @@ def commit_and_push_changes(repo, config, message):
         
 def read_head_playlists_metadata_json(repo, config):
     try:
-        content = repo.git.show(f'HEAD:{config[PLAYLIST_METADATA_FILENAME_KEY]}')
+        content = repo.git.show(f'HEAD:{files.PLAYLIST_METADATA_FILENAME}')
         return {p['id']: p for p in json.loads(content)}
     except Exception as e:
         return None

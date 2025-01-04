@@ -101,6 +101,81 @@ def last_backup():
         "last_backup": time.format_time_since(last_export) if last_export else None
     }
     
+@app.route('/config', methods=['GET', 'POST'])
+def config():
+    if 'user_id' not in session:
+        return login_redirect()
+    
+    if request.method == 'POST':
+        new_config = {
+            EXCLUDE_SPOTIFY_PLAYLISTS_KEY: request.form.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY) == 'on',
+            EXCLUDE_PLAYLISTS_KEY: [p.strip() for p in request.form.get(EXCLUDE_PLAYLISTS_KEY, '').split('\n') if p.strip()],
+        }
+        database.update_user_config(session['user_id'], new_config)
+        return redirect('/')
+    
+    current_config = config_for_user(session['user_id'])
+    
+    html = f"""
+    <html>
+    <head>
+        <title>Spogitify - Configuration</title>
+        <style>
+            .form-group {{ margin: 20px 0; }}
+            label {{ display: block; margin-bottom: 5px; }}
+            textarea {{ width: 100%; height: 100px; }}
+            .button-group {{ display: flex; gap: 10px; }}
+            .button-group button {{ flex: 1; }}
+            .secondary {{ background: #6c757d !important; }}
+        </style>
+        <script>
+            let formChanged = false;
+            
+            function trackChanges() {{
+                formChanged = true;
+            }}
+            
+            function confirmDiscard() {{
+                if (formChanged) {{
+                    return confirm('You have unsaved changes. Are you sure you want to go back?');
+                }}
+                return true;
+            }}
+        </script>
+    </head>
+    <body style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif;">
+        <h1>Configuration</h1>
+        
+        <form method="POST" onchange="trackChanges()">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="{EXCLUDE_SPOTIFY_PLAYLISTS_KEY}" 
+                           {'checked' if current_config.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY) else ''}>
+                    Exclude Spotify-generated playlists
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="{EXCLUDE_PLAYLISTS_KEY}">Exclude these playlists (one per line):</label>
+                <textarea name="{EXCLUDE_PLAYLISTS_KEY}" id="{EXCLUDE_PLAYLISTS_KEY}">{chr(10).join(current_config.get(EXCLUDE_PLAYLISTS_KEY, []))}</textarea>
+            </div>
+            
+            <div class="button-group" style="margin-top: 30px;">
+                <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
+                    Save Changes
+                </button>
+                <a href="/" onclick="return confirmDiscard()">
+                    <button type="button" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px; width: 100%;">
+                        Cancel
+                    </button>
+                </a>
+            </div>
+        </form>
+    </body>
+    </html>
+    """
+    return html
+
 @app.route('/')
 def home():
     sp = spotify.spotify_client()
@@ -163,11 +238,14 @@ def home():
             // Update every 5 minutes
             setInterval(updateLastBackupTime, 60 * 1000);
         </script>
-        {f'''<form action="{repo_url}" method="get" target="_blank">
+        {f'''<form action="{repo_url}" method="get" target="_blank" style="margin-bottom: 10px;">
             <button type="submit" style="{button_style}">
                 View on GitHub
             </button>
         </form>''' if repo_url else ''}
+        <a href="/config" style="text-decoration: none;">
+            <button style="{button_style}">Configure</button>
+        </a>
     </body>
     </html>
     """
