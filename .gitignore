@@ -1,5 +1,5 @@
 .cache
 spotify-archive/
 config.yaml
-export-config.sh
+.env
 __pycache__
