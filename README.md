@@ -81,7 +81,7 @@ pip install -r requirements.txt
    4. Copy your connection string
    5. Add to environment variables:
    ```
-   export MONGODB_URI='your_connection_string'
+   export MONGODB_URI=your_connection_string
    ```
 
 5. Run the development server:
