@@ -12,7 +12,8 @@ Spogitify is a web service that automatically backs up your Spotify playlists to
 
 ## Usage
 
-1. Visit [Spogitify](https://spogitify-65ba8394f115.herokuapp.com/) or [run locally](#development).
+1. Visit [Spogitify](https://spogitify.onrender.com/) or [run locally](#development).
+   - As Spogitify is currently hosted on Render's free tier, it may take up to a minute to load.
 2. Log in with your Spotify account
    - NOTE: Spogitify is currently in beta, and users must be allowlisted. [Contact](https://arizerner.com/contact) me for access.
 3. Click "Start Backup" to create your first archive
