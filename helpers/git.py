@@ -1,7 +1,7 @@
 import json
 from git import Repo, exc
 from helpers.config import *
-from helpers import files
+from helpers import files, formatting
 
 REMOTE_NAME = 'origin'
 DEFAULT_BRANCH = 'main'
@@ -56,7 +56,7 @@ def setup_archive(config):
     
     return repo
 
-def commit_and_push_changes(repo, config, message):
+def commit_and_push_changes(repo, config):
     """
     Commits (and pushes to remote if configured) any changes in `archive_dir`.
     """
@@ -64,7 +64,7 @@ def commit_and_push_changes(repo, config, message):
     if repo.is_dirty(): # Don't commit if there are no changes
         yield 'Committing changes'
         
-        repo.index.commit(message)
+        repo.index.commit(formatting.commit_message(playlist_changes(repo, config)))
         remote_url = get_remote_url(config, with_token=True)
         if remote_url:
             yield 'Pushing to remote'
@@ -72,16 +72,70 @@ def commit_and_push_changes(repo, config, message):
     else:
         yield 'No changes to commit'
         
-def read_head_playlists_metadata_json(repo, config):
-    try:
-        content = repo.git.show(f'HEAD:{files.PLAYLIST_METADATA_FILENAME}')
-        return {p['id']: p for p in json.loads(content)}
-    except Exception as e:
-        return None
+def playlist_changes(repo, config):
+    """
+    Returns an object describing the changes made since the last commit
+    by comparing current and previous playlist metadata and tracks.
+    """
+    content = repo.git.show(f'HEAD:{files.PLAYLIST_METADATA_FILENAME}')
+    previous_metadata = {p['id']: p for p in json.loads(content)}
+    current_metadata = files.read_playlists_metadata(config) or {}
+    
+    changes = {
+        'added_playlists': [],
+        'removed_playlists': [],
+        'changed_playlists': []
+    }
+    
+    # Add added playlists to changes object
+    for playlist_id in set(current_metadata.keys()) - set(previous_metadata.keys()):
+        changes['added_playlists'].append({
+            'id': playlist_id,
+            'name': current_metadata[playlist_id]['name']
+        })
             
-def read_head_playlist_tracks_json(playlist, repo, config):
-    try:
-        content = repo.git.show(f'HEAD:{files.playlist_filename(playlist, config)}')
-        return json.loads(content)
-    except Exception as e:
-        return None
+    # Add removed playlists to changes object
+    for playlist_id in set(previous_metadata.keys()) - set(current_metadata.keys()):
+        changes['removed_playlists'].append({
+            'id': playlist_id,
+            'name': previous_metadata[playlist_id]['name']
+        })
+    
+    # Add changed playlists and their changes to changes object
+    for playlist_id in set(current_metadata.keys()) & set(previous_metadata.keys()):
+        playlist = current_metadata[playlist_id]
+        if playlist['snapshot_id'] != previous_metadata[playlist_id]['snapshot_id']:
+            
+            track_info = {}
+            def store_track_info_and_return_id(track):
+                track_info[track['id']] = {
+                    'name': track['name'],
+                    'artist': track['artist']
+                }
+                return track['id']
+            
+            # Load current tracks
+            current_track_ids = set(store_track_info_and_return_id(t) for t in files.read_playlist_tracks(playlist, config))
+            
+            # Load previous tracks
+            content = repo.git.show(f'HEAD:{files.PLAYLISTS_DIR}/{files.playlist_filename(playlist)}')
+            previous_track_ids = set(store_track_info_and_return_id(t) for t in (json.loads(content) or []))
+            
+            added_tracks = []
+            removed_tracks = []
+            
+            for track_id in current_track_ids - previous_track_ids:
+                added_tracks.append(track_info[track_id])
+                
+            for track_id in previous_track_ids - current_track_ids:
+                removed_tracks.append(track_info[track_id])
+            
+            changes['changed_playlists'].append({
+                'id': playlist_id,
+                'name': playlist['name'],
+                'old_name': previous_metadata[playlist_id]['name'],
+                'added_tracks': added_tracks,
+                'removed_tracks': removed_tracks
+            })
+    
+    return changes

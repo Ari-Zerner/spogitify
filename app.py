@@ -1,7 +1,7 @@
 import tempfile
 from flask import Flask, request, redirect, session, Response
 from helpers.config import *
-from helpers import spotify, git, files, formatting, database, time
+from helpers import spotify, git, files, database, time
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -40,8 +40,7 @@ def run_export(sp, config):
         playlists = yield from spotify.fetch_playlists(sp, config)
         yield from files.write_playlists_metadata(playlists, config)
         yield from files.write_playlist_tracks(playlists, config)
-        commit_message = formatting.commit_message(repo, config)
-        yield from git.commit_and_push_changes(repo, config, commit_message)
+        yield from git.commit_and_push_changes(repo, config)
     except Exception as e:
         yield f"Error: {str(e)}"
         raise e
