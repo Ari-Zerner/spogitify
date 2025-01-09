@@ -31,8 +31,6 @@ def include_playlist(playlist, config):
     """
     Returns True if the playlist should be included in the export.
     """
-    if config[EXCLUDE_SPOTIFY_PLAYLISTS_KEY] and playlist['owner']['id'] == 'spotify':
-        return False
     if playlist['name'] in config[EXCLUDE_PLAYLISTS_KEY]:
         return False
     return True

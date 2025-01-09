@@ -107,7 +107,6 @@ def config():
     
     if request.method == 'POST':
         new_config = {
-            EXCLUDE_SPOTIFY_PLAYLISTS_KEY: request.form.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY) == 'on',
             EXCLUDE_PLAYLISTS_KEY: [p.strip() for p in request.form.get(EXCLUDE_PLAYLISTS_KEY, '').split('\n') if p.strip()],
         }
         database.update_user_config(session['user_id'], new_config)
@@ -146,14 +145,6 @@ def config():
         <h1>Configuration</h1>
         
         <form method="POST" onchange="trackChanges()">
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="{EXCLUDE_SPOTIFY_PLAYLISTS_KEY}" 
-                           {'checked' if current_config.get(EXCLUDE_SPOTIFY_PLAYLISTS_KEY) else ''}>
-                    Exclude Spotify-generated playlists
-                </label>
-            </div>
-            
             <div class="form-group">
                 <label for="{EXCLUDE_PLAYLISTS_KEY}">Exclude these playlists (one per line):</label>
                 <textarea name="{EXCLUDE_PLAYLISTS_KEY}" id="{EXCLUDE_PLAYLISTS_KEY}">{chr(10).join(current_config.get(EXCLUDE_PLAYLISTS_KEY, []))}</textarea>
