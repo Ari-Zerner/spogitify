@@ -1,7 +1,22 @@
 import tempfile
+import sentry_sdk
 from flask import Flask, request, redirect, session, Response
 from helpers.config import *
 from helpers import spotify, git, files, database, time
+
+sentry_sdk.init(
+    # Read SENTRY_DSN from environment
+    
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for tracing.
+    traces_sample_rate=1.0,
+    _experiments={
+        # Set continuous_profiling_auto_start to True
+        # to automatically start the profiler on when
+        # possible.
+        "continuous_profiling_auto_start": True,
+    },
+)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -50,6 +65,10 @@ def run_export(sp, config):
 @app.route('/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
+
+@app.route('/error')
+def error():
+    raise Exception("Test error")
 
 @app.route('/login')
 def login():
