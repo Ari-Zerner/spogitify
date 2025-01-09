@@ -18,6 +18,7 @@ ARCHIVE_DIR_KEY = 'ARCHIVE_DIR'
 INCLUDE_LIKED_SONGS_KEY = 'INCLUDE_LIKED_SONGS'
 EXCLUDE_PLAYLISTS_KEY = 'EXCLUDE_PLAYLISTS'
 REPO_NAME_KEY = 'REPO_NAME'
+GITHUB_VIEWERS_KEY = 'GITHUB_VIEWERS'
 
 from helpers.database import get_user_config
 def config_for_user(user_id):
@@ -26,5 +27,6 @@ def config_for_user(user_id):
         INCLUDE_LIKED_SONGS_KEY: True,
         EXCLUDE_PLAYLISTS_KEY: [],
         REPO_NAME_KEY: f"spotify-archive-{user_id}",
+        GITHUB_VIEWERS_KEY: [],
         **get_user_config(user_id)
     }

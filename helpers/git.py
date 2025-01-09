@@ -1,7 +1,41 @@
 import json
 from git import Repo, exc
+from github import Github
 from helpers.config import *
 from helpers import files, formatting
+
+def update_repository_access(config):
+    """
+    Updates repository visibility and collaborator access. Assumes that the repository already exists.
+    Returns a (possibly empty) list of error messages.
+    """
+    gh = Github(GITHUB_TOKEN)
+    repo = gh.get_user().get_repo(config[REPO_NAME_KEY])
+    
+    # Update repository visibility
+    repo.edit(private=bool(config[GITHUB_VIEWERS_KEY]))
+    
+    # Get current collaborators
+    current_collaborators = set(collab.login for collab in repo.get_collaborators())
+    desired_collaborators = set(config[GITHUB_VIEWERS_KEY])
+    
+    error_messages = []
+    
+    # Remove collaborators that are no longer in the list
+    for git_user in current_collaborators - desired_collaborators:
+        try:
+            repo.remove_from_collaborators(git_user)
+        except:
+            error_messages.append(f"Could not remove GitHub user {git_user} as collaborator")
+        
+    # Add new collaborators
+    for git_user in desired_collaborators - current_collaborators:
+        try:
+            repo.add_to_collaborators(git_user, permission='pull')
+        except:
+            error_messages.append(f"Could not add GitHub user {git_user} as collaborator")
+            
+    return error_messages
 
 REMOTE_NAME = 'origin'
 DEFAULT_BRANCH = 'main'
@@ -9,19 +43,16 @@ GITHUB_TOKEN = env_var(GITHUB_TOKEN_KEY)
 
 def get_remote_url(config, with_token=False):
     """
-    Creates or gets GitHub repository URL if github_token and repo_name are set.
-    Returns the remote URL if successful, None otherwise.
+    Creates GitHub repository if it doesn't exist, then returns the remote URL.
     """
-    if config[REPO_NAME_KEY] and GITHUB_TOKEN:
-        from github import Github
-        gh = Github(GITHUB_TOKEN)
-        try:
-            gh.get_user().get_repo(config[REPO_NAME_KEY])
-        except:
-            gh.get_user().create_repo(config[REPO_NAME_KEY])
-        prefix = f"https://{GITHUB_TOKEN}@" if with_token else "https://"
-        return f"{prefix}github.com/{gh.get_user().login}/{config[REPO_NAME_KEY]}.git"
-    return None
+    gh = Github(GITHUB_TOKEN)
+    try:
+        gh.get_user().get_repo(config[REPO_NAME_KEY])
+    except:
+        gh.get_user().create_repo(config[REPO_NAME_KEY])
+        update_repository_access(config)
+    prefix = f"https://{GITHUB_TOKEN}@" if with_token else "https://"
+    return f"{prefix}github.com/{gh.get_user().login}/{config[REPO_NAME_KEY]}.git"
 
 def setup_archive(config):
     """

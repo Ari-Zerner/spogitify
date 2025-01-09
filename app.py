@@ -105,16 +105,21 @@ def config():
     if 'user_id' not in session:
         return login_redirect()
     
+    current_config = config_for_user(session['user_id'])
+    
     if request.method == 'POST':
-        print(request.form)
         new_config = {
+            **current_config,
             INCLUDE_LIKED_SONGS_KEY: INCLUDE_LIKED_SONGS_KEY in request.form,
             EXCLUDE_PLAYLISTS_KEY: [p.strip() for p in request.form.get(EXCLUDE_PLAYLISTS_KEY, '').split('\n') if p.strip()],
+            GITHUB_VIEWERS_KEY: [u.strip() for u in request.form.get(GITHUB_VIEWERS_KEY, '').split('\n') if u.strip()],
         }
-        database.update_user_config(session['user_id'], new_config)
+        if new_config != current_config:
+            database.update_user_config(session['user_id'], new_config)
+            if new_config[GITHUB_VIEWERS_KEY] != current_config[GITHUB_VIEWERS_KEY]:
+                error_messages = git.update_repository_access(new_config)
+                # TODO: Add flash message with error messages
         return redirect('/')
-    
-    current_config = config_for_user(session['user_id'])
     
     html = f"""
     <html>
@@ -160,6 +165,12 @@ def config():
                 <textarea name="{EXCLUDE_PLAYLISTS_KEY}" id="{EXCLUDE_PLAYLISTS_KEY}">{chr(10).join(current_config.get(EXCLUDE_PLAYLISTS_KEY, []))}</textarea>
             </div>
             
+            <div class="form-group">
+                <label for="{GITHUB_VIEWERS_KEY}">Share with GitHub users (one username per line):<br>
+                <small style="color: #666;">Leave empty to make the repository public, or add GitHub usernames to make it private and shared with specific users.</small></label>
+                <textarea name="{GITHUB_VIEWERS_KEY}" id="{GITHUB_VIEWERS_KEY}">{chr(10).join(current_config.get(GITHUB_VIEWERS_KEY, []))}</textarea>
+            </div>
+            
             <div class="button-group" style="margin-top: 30px;">
                 <button type="submit" style="background: #1DB954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 16px;">
                     Save Changes
@@ -192,7 +203,7 @@ def home():
             <h1>Spogitify</h1>
             {f'<div>Logged in with Spotify as {sp.me()["display_name"]}</div>' if sp else ''}
         </div>
-        <p>Spogitify backs up your Spotify playlists to a Git repository, allowing you to track how your playlists change over time.</p>
+        <p>Spogitify backs up your Spotify playlists to a GitHub repository, allowing you to track how your playlists change over time.</p>
         <p>NOTE: Spogitify is currently in beta, and users must be allowlisted. <a href="https://arizerner.com/contact" target="_blank">Contact</a> Ari Zerner for access.</p>
     """
     
@@ -216,9 +227,9 @@ def home():
     last_export_text = time.format_time_since(last_export) if last_export else "Never"
     
     html += f"""
-        <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
-            <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view.
-        </div>
+        {'''<div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <strong>⚠️ Warning:</strong> Your playlist archive will be stored in a public GitHub repository that anyone can view. You can change this in configuration.
+        </div>''' if not config.get(GITHUB_VIEWERS_KEY) else ''}
         <form action="/export" method="get" target="_blank" onsubmit="setTimeout(updateLastBackupTime, 1000)">
             <button type="submit" style="{button_style}">
                 Start Backup

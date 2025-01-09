@@ -1,2 +1,3 @@
 Bugs and improvements:
-- [ ] Let users configure their own GitHub repository
+- [ ] Add flash messages for UI feedback
+- [ ] Use HTML templates instead of writing HTML in Python
