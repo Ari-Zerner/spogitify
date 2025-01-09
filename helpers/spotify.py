@@ -35,6 +35,32 @@ def include_playlist(playlist, config):
         return False
     return True
 
+def get_liked_songs(sp):
+    tracks = []
+    total_length_ms = 0
+    results = sp.current_user_saved_tracks()
+    while results:
+        for item in results['items']:
+            track = item['track']
+            if track:
+                track_info = {
+                    'name': track['name'],
+                    'artist': formatting.artists_string(track['artists']),
+                    'id': track['id'],
+                    'length_seconds': track['duration_ms'] // 1000
+                }
+                tracks.append(track_info)
+                total_length_ms += track['duration_ms']
+        results = sp.next(results)
+    return {
+        'id': ' liked_songs',
+        'name': ' Liked Songs',
+        'owner': sp.me()['display_name'],
+        'tracks': tracks,
+        'num_songs': len(tracks),
+        'total_length_seconds': total_length_ms // 1000
+    }
+
 def fetch_playlists(sp, config):
     """
     Fetches all playlists for the authenticated user, including track details.
@@ -46,28 +72,28 @@ def fetch_playlists(sp, config):
     # Load existing playlist metadata
     playlists_metadata = files.read_playlists_metadata(config) or {}
     
+    if config[INCLUDE_LIKED_SONGS_KEY]:
+        yield 'Fetching Liked Songs'
+        playlists.append(get_liked_songs(sp))
+    
     results = sp.current_user_playlists()
     while results:
         for item in results['items']:
             if item and item['id'] not in seen_playlist_ids and include_playlist(item, config):
+                seen_playlist_ids.add(item['id'])
                 if item['id'] in playlists_metadata and playlists_metadata[item['id']]['snapshot_id'] == item['snapshot_id']:
                     # If the playlist hasn't changed, reuse saved information
                     yield f"Unchanged playlist: {item['name']}"
                     playlist = playlists_metadata[item['id']]
                     playlist['tracks'] = files.read_playlist_tracks(playlist, config)
+                    playlists.append(playlist)
                 else:
                     yield f"Fetching playlist: {item['name']}"
-                    playlist = {
-                        'id': item['id'],
-                        'name': item['name'],
-                        'owner': item['owner']['display_name'],
-                        'snapshot_id': item['snapshot_id']
-                    }
                     total_length_ms = 0
                     
                     # Fetch tracks for the playlist
                     tracks = []
-                    track_results = sp.playlist_tracks(playlist['id'])
+                    track_results = sp.playlist_tracks(item['id'])
                     while track_results:
                         for track_item in track_results['items']:
                             track = track_item['track']
@@ -84,12 +110,15 @@ def fetch_playlists(sp, config):
                                 total_length_ms += track['duration_ms']
                         track_results = sp.next(track_results)
                     
-                    playlist['tracks'] = tracks
-                    playlist['num_songs'] = len(tracks)
-                    playlist['total_length_seconds'] = total_length_ms // 1000
-                    
-                playlists.append(playlist)
-                seen_playlist_ids.add(item['id'])
+                    playlists.append({
+                        'id': item['id'],
+                        'name': item['name'],
+                        'owner': item['owner']['display_name'],
+                        'snapshot_id': item['snapshot_id'],
+                        'tracks': tracks,
+                        'num_songs': len(tracks),
+                        'total_length_seconds': total_length_ms // 1000
+                    })
                 
         results = sp.next(results)
     

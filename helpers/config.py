@@ -15,15 +15,16 @@ def env_var(key, default=None):
 
 # User configuration keys
 ARCHIVE_DIR_KEY = 'ARCHIVE_DIR'
+INCLUDE_LIKED_SONGS_KEY = 'INCLUDE_LIKED_SONGS'
 EXCLUDE_PLAYLISTS_KEY = 'EXCLUDE_PLAYLISTS'
 REPO_NAME_KEY = 'REPO_NAME'
 
 from helpers.database import get_user_config
 def config_for_user(user_id):
     """Get configuration for a specific user, combining global and user-specific config."""
-    user_config = get_user_config(user_id)
     return {
+        INCLUDE_LIKED_SONGS_KEY: True,
         EXCLUDE_PLAYLISTS_KEY: [],
         REPO_NAME_KEY: f"spotify-archive-{user_id}",
-        **user_config
+        **get_user_config(user_id)
     }

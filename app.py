@@ -106,7 +106,9 @@ def config():
         return login_redirect()
     
     if request.method == 'POST':
+        print(request.form)
         new_config = {
+            INCLUDE_LIKED_SONGS_KEY: INCLUDE_LIKED_SONGS_KEY in request.form,
             EXCLUDE_PLAYLISTS_KEY: [p.strip() for p in request.form.get(EXCLUDE_PLAYLISTS_KEY, '').split('\n') if p.strip()],
         }
         database.update_user_config(session['user_id'], new_config)
@@ -145,6 +147,14 @@ def config():
         <h1>Configuration</h1>
         
         <form method="POST" onchange="trackChanges()">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="{INCLUDE_LIKED_SONGS_KEY}" id="{INCLUDE_LIKED_SONGS_KEY}" 
+                           {' checked' if current_config.get(INCLUDE_LIKED_SONGS_KEY) else ''}>
+                    Include Liked Songs
+                </label>
+            </div>
+
             <div class="form-group">
                 <label for="{EXCLUDE_PLAYLISTS_KEY}">Exclude these playlists (one per line):</label>
                 <textarea name="{EXCLUDE_PLAYLISTS_KEY}" id="{EXCLUDE_PLAYLISTS_KEY}">{chr(10).join(current_config.get(EXCLUDE_PLAYLISTS_KEY, []))}</textarea>
