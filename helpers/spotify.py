@@ -5,9 +5,9 @@ import uuid
 from helpers.config import *
 from helpers import files, formatting
 
-SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI')
+SPOTIFY_CLIENT_ID = env_var(SPOTIFY_CLIENT_ID_KEY)
+SPOTIFY_CLIENT_SECRET = env_var(SPOTIFY_CLIENT_SECRET_KEY)
+SPOTIFY_REDIRECT_URI = env_var(SPOTIFY_REDIRECT_URI_KEY)
 
 def spotify_oauth():
     return SpotifyOAuth(

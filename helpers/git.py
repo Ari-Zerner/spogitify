@@ -5,7 +5,7 @@ from helpers import files, formatting
 
 REMOTE_NAME = 'origin'
 DEFAULT_BRANCH = 'main'
-GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
+GITHUB_TOKEN = env_var(GITHUB_TOKEN_KEY)
 
 def get_remote_url(config, with_token=False):
     """
