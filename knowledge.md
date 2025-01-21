@@ -3,4 +3,4 @@ Bugs and improvements:
 - [ ] Use HTML templates instead of writing HTML in Python
 - [ ] Better feedback on Spotify allowlist errors
 - [ ] Add footer with links to the repo and the author
-- [ ] Change description should include liked songs
+- [ ] Find a way to export with an internal background process instead of a new tab

@@ -135,7 +135,7 @@ def playlist_changes(repo, config):
     # Add changed playlists and their changes to changes object
     for playlist_id in set(current_metadata.keys()) & set(previous_metadata.keys()):
         playlist = current_metadata[playlist_id]
-        if playlist.get('snapshot_id') != previous_metadata[playlist_id].get('snapshot_id'):
+        if not playlist.get('snapshot_id') or playlist.get('snapshot_id') != previous_metadata[playlist_id].get('snapshot_id'):
             
             track_info = {}
             def store_track_info_and_return_id(track):
