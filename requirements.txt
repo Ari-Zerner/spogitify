@@ -6,3 +6,4 @@ gunicorn==20.1.0
 PyGithub==2.5.0
 pymongo==4.6.2
 sentry-sdk[flask]==2.19.2
+python-dotenv==1.0.1

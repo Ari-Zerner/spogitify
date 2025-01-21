@@ -1,4 +1,5 @@
 import os
+import dotenv
 
 # Global configuration keys
 SPOTIFY_CLIENT_ID_KEY = 'SPOTIFY_CLIENT_ID'
@@ -7,6 +8,7 @@ SPOTIFY_REDIRECT_URI_KEY = 'SPOTIFY_REDIRECT_URI'
 GITHUB_TOKEN_KEY = 'GITHUB_TOKEN'
 MONGODB_CONNECTION_STRING_KEY = 'MONGODB_CONNECTION_STRING'
 
+dotenv.load_dotenv()
 def env_var(key, default=None):
     value = os.environ.get(key, default)
     if not value:
